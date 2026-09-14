@@ -1,0 +1,1 @@
+{"root":["./src/analysispanel.tsx","./src/app.tsx","./src/gamereview.test.tsx","./src/gamereview.tsx","./src/positionanalysispanel.test.tsx","./src/positionanalysispanel.tsx","./src/puzzles.tsx","./src/weaknesses.tsx","./src/analysis.ts","./src/api.ts","./src/hooks.ts","./src/jobhooks.ts","./src/main.tsx","./src/test-setup.ts","./vite.config.ts"],"version":"5.9.3"}

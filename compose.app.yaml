@@ -1,0 +1,39 @@
+services:
+  migrate:
+    build: { context: ., target: api }
+    command: ["--migrate"]
+    environment:
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD}
+    depends_on:
+      database: { condition: service_healthy }
+    volumes:
+      - protection-keys:/app/keys
+  api:
+    build: { context: ., target: api }
+    environment:
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    volumes:
+      - protection-keys:/app/keys
+    restart: unless-stopped
+    mem_limit: 512m
+  worker:
+    build: { context: ., target: worker }
+    environment:
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD}
+      Analysis__InaccuracyCentipawns: ${ANALYSIS_INACCURACY_CP:-50}
+      Analysis__MistakeCentipawns: ${ANALYSIS_MISTAKE_CP:-100}
+      Analysis__BlunderCentipawns: ${ANALYSIS_BLUNDER_CP:-200}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+    cpus: 2
+    mem_limit: 1g
+  frontend:
+    build: { context: web }
+    ports:
+      - "127.0.0.1:8088:8080"
+    depends_on: [api]
+    restart: unless-stopped

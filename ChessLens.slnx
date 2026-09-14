@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ChessLens.Api/ChessLens.Api.csproj" />
+    <Project Path="src/ChessLens.Core/ChessLens.Core.csproj" />
+    <Project Path="src/ChessLens.Worker/ChessLens.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ChessLens.Tests/ChessLens.Tests.csproj" />
+  </Folder>
+</Solution>

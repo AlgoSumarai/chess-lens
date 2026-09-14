@@ -1,0 +1,17 @@
+# Optional build-only trust for a TLS-inspecting network. Runtime trust is unchanged.
+services:
+  migrate:
+    build:
+      secrets: [build_ca]
+  api:
+    build:
+      secrets: [build_ca]
+  worker:
+    build:
+      secrets: [build_ca]
+  frontend:
+    build:
+      secrets: [build_ca]
+secrets:
+  build_ca:
+    file: .local/build-ca.pem

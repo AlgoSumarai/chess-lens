@@ -1,0 +1,24 @@
+[Event "ChessLens sample: king safety"]
+[Site "Local demo fixture"]
+[Date "2026.08.01"]
+[Round "1"]
+[White "Learner"]
+[Black "Practice opponent"]
+[Result "0-1"]
+[TimeControl "600+0"]
+[Termination "checkmate"]
+
+1. f3 {[%clk 0:09:56]} e5 {[%clk 0:09:58]} 2. g4 {[%clk 0:09:50]} Qh4# {[%clk 0:09:55]} 0-1
+
+[Event "ChessLens sample: development"]
+[Site "Local demo fixture"]
+[Date "2026.08.02"]
+[Round "2"]
+[White "Learner"]
+[Black "Practice opponent"]
+[Result "1-0"]
+[TimeControl "600+5"]
+[Opening "Italian Game"]
+[ECO "C50"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. O-O Nf6 5. d3 d6 1-0
