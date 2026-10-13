@@ -13,6 +13,7 @@ public static class DemoEndpoints
 
     private static async Task<IResult> Create(UserManager<AppUser> users, SignInManager<AppUser> signIn, LensDbContext db, CancellationToken ct)
     {
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
         var user = new AppUser { UserName = $"demo-{Guid.NewGuid():N}@demo.invalid", IsDemo = true };
         user.Email = user.UserName;
         var created = await users.CreateAsync(user);
@@ -20,8 +21,9 @@ public static class DemoEndpoints
         await using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("ChessLens.Demo.Pgn")!;
         using var reader = new StreamReader(stream);
         var pgn = await reader.ReadToEndAsync(ct);
+        await ResourceAdmission.Reserve(db, user.Id, WorkBudget.Import, ct);
         db.ImportJobs.Add(new ImportJob { OwnerId = user.Id, PayloadJson = JsonSerializer.Serialize(new PgnImportRequest(pgn, "Learner")) });
-        await db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         await signIn.SignInAsync(user, false);
         return Results.Ok(new { user.IsDemo });
     }

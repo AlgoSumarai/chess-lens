@@ -59,10 +59,10 @@ public static class CoachingEndpoints
             }
             return Results.Accepted($"/api/coaching/{existing.Id}", View(existing));
         }
-        if (await db.CoachingJobs.CountAsync(j => j.OwnerId == owner && j.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 300 ||
-            requested && await db.CoachingJobs.CountAsync(j => j.OwnerId == owner && (j.State == "queued" || j.State == "running"), ct) >= 3)
+        if (requested && await db.CoachingJobs.CountAsync(j => j.OwnerId == owner && (j.State == "queued" || j.State == "running"), ct) >= 3)
             return Results.Problem(statusCode: 429, title: "Coaching limit reached", detail: "Saved explanations remain available. Wait for an active explanation or review the engine's recorded line.");
         var immediate = !requested || !configuration.Value.Configured;
+        await ResourceAdmission.Reserve(db, owner, WorkBudget.Coaching, ct, pendingJobs: immediate ? 0 : 1);
         var job = new CoachingJob { OwnerId = owner, GameId = run.GameId, RunId = run.Id, Ply = move.Ply, CacheIdentity = key,
             EvidenceJson = JsonSerializer.Serialize(evidence, CoachingRules.Json), ModelRequested = requested, Model = model,
             State = immediate ? "completed" : "queued", ResultJson = immediate ? JsonSerializer.Serialize(CoachingRules.Factual(evidence, requested ? "provider-unavailable" : null), CoachingRules.Json) : null };

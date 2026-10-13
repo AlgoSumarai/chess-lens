@@ -24,9 +24,9 @@ public static class PuzzleEndpoints
             var colour = await db.UserGames.Where(g => g.OwnerId == owner && g.GameId == run.GameId).Select(g => g.PlayerColour).SingleAsync(ct);
             if (run.State != "completed" || move is null || !PuzzleProcessor.Eligible(move) || move.Side != colour)
                 throw new ArgumentException("Choose your player and a completed, verified mistake to validate as a puzzle.");
-            if (await db.Puzzles.CountAsync(p => p.OwnerId == owner && (p.State == "queued" || p.State == "running"), ct) >= 2 ||
-                await db.Puzzles.CountAsync(p => p.OwnerId == owner && p.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 20)
+            if (await db.Puzzles.CountAsync(p => p.OwnerId == owner && (p.State == "queued" || p.State == "running"), ct) >= 2)
                 return Results.Problem(statusCode: 429, title: "Puzzle validation budget reached", detail: "At most two active and 20 new candidates per rolling day are allowed.");
+            await ResourceAdmission.Reserve(db, owner, WorkBudget.Puzzle, ct);
             var puzzle = new Puzzle { OwnerId = owner, RunId = run.Id, GameId = run.GameId, Ply = request.Ply };
             db.Puzzles.Add(puzzle); await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
             return Results.Accepted($"/api/puzzles/{puzzle.Id}", PuzzleView(puzzle));
@@ -61,8 +61,7 @@ public static class PuzzleEndpoints
             if (active is not null && active.StartedAt < DateTimeOffset.UtcNow.AddDays(-1))
             { Finish(active, puzzle, "expired"); await db.SaveChangesAsync(ct); active = null; }
             if (active is not null) return Results.Ok(AttemptView(active, puzzle));
-            if (await db.PuzzleAttempts.CountAsync(a => a.OwnerId == owner && a.StartedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 200)
-                return Results.Problem(statusCode: 429, title: "Daily attempt limit reached", detail: "Up to 200 puzzle attempts may be started per rolling day.");
+            await ResourceAdmission.Reserve(db, owner, WorkBudget.PuzzleAttempt, ct, pendingJobs: 0);
             var attempt = new PuzzleAttempt { OwnerId = owner, PuzzleId = id };
             db.PuzzleAttempts.Add(attempt); await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
             return Results.Created($"/api/puzzles/attempts/{attempt.Id}", AttemptView(attempt, puzzle));

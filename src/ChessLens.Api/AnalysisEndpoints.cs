@@ -42,12 +42,14 @@ public static class AnalysisEndpoints
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({owner}, 0))", ct);
         var game = await db.UserGames.AsNoTracking().Where(g => g.OwnerId == owner && g.GameId == id).Select(g => new { plies = g.Game.Moves.Count }).SingleOrDefaultAsync(ct);
         if (game is null) return Results.NotFound();
-        var active = await db.AnalysisRuns.FirstOrDefaultAsync(r => r.OwnerId == owner && r.GameId == id && (r.State == "waiting" || r.State == "queued" || r.State == "running"), ct);
-        if (active is not null) return Results.Accepted($"/api/analysis/{active.Id}", View(active));
+        var active = await db.AnalysisRuns.Where(r => r.OwnerId == owner && r.GameId == id && (r.State == "waiting" || r.State == "queued" || r.State == "running"))
+            .OrderByDescending(r => r.CreatedAt).ToListAsync(ct);
+        var compatible = active.FirstOrDefault(r => r.Profile == input.Profile && r.AnalysisVersion == "chesslens-analysis-v3");
+        if (compatible is not null) return Results.Accepted($"/api/analysis/{compatible.Id}", View(compatible));
+        if (active.Count > 0) return Results.Problem(statusCode: 409, title: "Another review is active", detail: "Finish or cancel the active review before choosing a different depth.");
         if (await db.AnalysisRuns.CountAsync(r => r.OwnerId == owner && (r.State == "queued" || r.State == "running"), ct) >= 3)
             return Results.Problem(statusCode: 429, title: "Analysis queue is full", detail: "Wait for a review to complete or cancel an active one.");
-        if (await db.AnalysisRuns.Where(r => r.OwnerId == owner && r.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1)).SumAsync(r => r.TotalPlies, ct) + game.plies > 5000)
-            return Results.Problem(statusCode: 429, title: "Daily analysis budget reached", detail: "The daily budget is 5,000 half-moves, including queued work.");
+        await ResourceAdmission.Reserve(db, owner, WorkBudget.Analysis, ct, units: game.plies);
         var run = new AnalysisRun { OwnerId = owner, GameId = id, Profile = input.Profile, TotalPlies = game.plies };
         db.AnalysisRuns.Add(run);
         await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);

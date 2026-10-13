@@ -87,6 +87,17 @@ Failures/interruptions retained: the first focused 66-case run had **65 passes /
 
 The specific PGN disclosure defect is resolved. Final all-entity authorization/resource, crash/database/reconnect, accessibility, architecture/licence/HTTPS/benchmark/CI/clean-checkout and independent-review gates remain open. **Zero review rounds used.**
 
+## Shared admission and retained quotas — 2026-10-13
+
+Implemented on `9001c8a` plus the resource-admission worktree. All durable producers share atomic admission, and daily reservations survive imported-data deletion. Demo creation participates in the same transaction. Profile compatibility and batch deferral prevent a requested deep review from silently reusing an active quick review. [Resource limits](resource-limits.md) documents exact allowances and migration limits.
+
+- Full backend: **198 passed, zero failed/skipped**, 56 s (`.local/evidence/security/resources-integrated.log`, `resources-integrated.trx`). Command: load the isolated port-54339 environment, then `dotnet test ChessLens.slnx --no-restore --logger 'trx;LogFileName=resources-integrated.trx' --results-directory .local/evidence/security`. Actual PostgreSQL and Stockfish are supplied; quota fixtures are explicitly labelled.
+- Six new HTTP/database cases check retained import/review budgets after deletion, concurrent half-move reservations, rollback on invalid positions, shared capacity across owners and job kinds, demo rollback, cancellation at capacity, same-channel replacement with no extra pending slot, and deep batch deferral/reuse. Administrative queued payloads test admission only; they are not provider or OS recovery evidence. Earlier focused state: **29 passed**, 13 s (`resource-admission-fixed.log`, `resource-admission.trx`). The initial focused compile failure (missing API namespace import) is retained in the earlier log.
+- Applied `RetainedResourceBudgets` to the existing isolated restored copy `chesslens_upgrade_20261013`. Core counts/digests before and after are identical (130 games, 570 legal moves, 250 runs, 1,202 evidence records, 14 completed reports). Available prior-day reservations were backfilled; running migrations again leaves all grouped ledger counts/units unchanged. Evidence: `.local/evidence/upgrade/resources-{before,after}-core.json`, `resources-migration.log`, `resources-reapply.log`, `resources-{before,after}-reapply.txt`. This does not recover usage whose old job rows were already deleted before upgrade.
+- A previous full-run handle was missing and process inventory confirmed no live test runner; its empty/incomplete log is retained as `resources-integrated-interrupted.log`. It is not counted as a pass.
+
+The current Compose images do not yet contain this change. Global engine coordination, mixed-load and OS recovery experiments, final browser/architecture/accessibility/operations/licensing gates and independent review remain required. **Zero review rounds used.**
+
 ## Current source checks — 2026-09-14
 
 - Full backend suite: **58 passed, zero failed/skipped** in 47 seconds. Command: `dotnet test tests/ChessLens.Tests --no-restore --logger 'trx;LogFileName=backend.trx' --results-directory .local/TestResults`. Evidence: `.local/TestResults/backend.trx` (generated local artifact). Tests use PostgreSQL 18.6 and the verified official Windows Stockfish 19 binary.

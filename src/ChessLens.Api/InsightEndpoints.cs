@@ -22,8 +22,7 @@ public static class InsightEndpoints
             var active = await db.InsightSnapshots.SingleOrDefaultAsync(j => j.OwnerId == owner && (j.State == "queued" || j.State == "running"), ct);
             if (active is not null) return active.FilterJson == json ? Results.Accepted($"/api/insights/{active.Id}", View(active))
                 : Results.Problem(statusCode: 429, title: "An insight review is already active", detail: "Wait for it to complete or cancel it before changing the selection.");
-            if (await db.InsightSnapshots.CountAsync(j => j.OwnerId == owner && j.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 20)
-                return Results.Problem(statusCode: 429, title: "Daily insight budget reached", detail: "The limit is 20 snapshot requests per rolling day.");
+            await ResourceAdmission.Reserve(db, owner, WorkBudget.Insight, ct);
             var snapshot = new InsightSnapshot { OwnerId = owner, FilterJson = json, OptionsJson = JsonSerializer.Serialize(configuration.Value) };
             db.InsightSnapshots.Add(snapshot); await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
             return Results.Accepted($"/api/insights/{snapshot.Id}", View(snapshot));

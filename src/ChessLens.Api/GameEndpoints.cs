@@ -51,8 +51,7 @@ public static class GameEndpoints
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({owner}, 0))", ct);
         if (await db.ImportJobs.CountAsync(j => j.OwnerId == owner && (j.State == "queued" || j.State == "running"), ct) >= 3)
             return Results.Problem(statusCode: 429, title: "Import limit reached", detail: "Wait for an active import to finish or cancel it.");
-        if (await db.ImportJobs.CountAsync(j => j.OwnerId == owner && j.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 20)
-            return Results.Problem(statusCode: 429, title: "Daily import limit reached");
+        await ResourceAdmission.Reserve(db, owner, WorkBudget.Import, ct);
         var job = new ImportJob { OwnerId = owner, PayloadJson = JsonSerializer.Serialize(input) };
         db.ImportJobs.Add(job);
         await db.SaveChangesAsync(ct);
@@ -70,9 +69,9 @@ public static class GameEndpoints
         var active = await db.ImportJobs.SingleOrDefaultAsync(j => j.OwnerId == owner && j.Source == input.Provider && j.PayloadJson == payload &&
             (j.State == "queued" || j.State == "running"), ct);
         if (active is not null) return Results.Accepted($"/api/jobs/{active.Id}", JobView(active));
-        if (await db.ImportJobs.CountAsync(j => j.OwnerId == owner && (j.State == "queued" || j.State == "running"), ct) >= 3 ||
-            await db.ImportJobs.CountAsync(j => j.OwnerId == owner && j.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 20)
+        if (await db.ImportJobs.CountAsync(j => j.OwnerId == owner && (j.State == "queued" || j.State == "running"), ct) >= 3)
             return Results.Problem(statusCode: 429, title: "Import limit reached", detail: "Imports are limited to three active batches and 20 new batches per day. Wait or cancel an active batch.");
+        await ResourceAdmission.Reserve(db, owner, WorkBudget.Import, ct);
         if (!await db.ImportedProfiles.AnyAsync(p => p.OwnerId == owner && p.Provider == input.Provider && p.Username == input.Username, ct))
             db.ImportedProfiles.Add(new ImportedProfile { OwnerId = owner, Provider = input.Provider, Username = input.Username });
         var job = new ImportJob { OwnerId = owner, Source = input.Provider, PayloadJson = payload, Phase = "fetching" };

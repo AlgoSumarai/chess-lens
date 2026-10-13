@@ -49,7 +49,8 @@ public sealed class ImportBatchProcessor(LensDbContext db)
             else
             {
                 var active = await db.AnalysisRuns.CountAsync(r => r.OwnerId == candidate.OwnerId && (r.State == "queued" || r.State == "running"), ct);
-                foreach (var run in runs.Where(r => r.State == "waiting").OrderBy(r => r.CreatedAt).ThenBy(r => r.Id).Take(Math.Max(0, 3 - active)))
+                var occupied = await db.AnalysisRuns.Where(r => r.OwnerId == candidate.OwnerId && (r.State == "queued" || r.State == "running")).Select(r => r.GameId).ToArrayAsync(ct);
+                foreach (var run in runs.Where(r => r.State == "waiting" && !occupied.Contains(r.GameId)).OrderBy(r => r.CreatedAt).ThenBy(r => r.Id).Take(Math.Max(0, 3 - active)))
                 { run.State = "queued"; run.Version++; run.UpdatedAt = DateTimeOffset.UtcNow; changed = true; }
             }
             var state = runs.Count != ids.Length ? "failed" : runs.All(r => r.State is "completed" or "failed" or "cancelled")

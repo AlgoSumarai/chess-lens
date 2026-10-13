@@ -52,12 +52,10 @@ public static class ImportBatchEndpoints
         if (games.Count == 0) throw new ArgumentException("No valid games were saved from this import.");
         var selected = games.Select(g => g.GameId).ToArray();
         var reviews = await db.AnalysisRuns.Where(r => r.OwnerId == owner && selected.Contains(r.GameId) &&
-            (r.State == "queued" || r.State == "running" || r.State == "completed" && r.Profile == input.Profile && r.AnalysisVersion == "chesslens-analysis-v3"))
+            r.Profile == input.Profile && r.AnalysisVersion == "chesslens-analysis-v3" && (r.State == "waiting" || r.State == "queued" || r.State == "running" || r.State == "completed"))
             .OrderByDescending(r => r.CreatedAt).ToListAsync(ct);
         var fresh = games.Where(g => !reviews.Any(r => r.GameId == g.GameId)).ToArray();
-        var reserved = await db.AnalysisRuns.Where(r => r.OwnerId == owner && r.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1)).SumAsync(r => r.TotalPlies, ct);
-        if (reserved + fresh.Sum(g => g.plies) > 5000)
-            return Results.Problem(statusCode: 429, title: "Daily analysis budget reached", detail: "Choose fewer games. The daily budget includes all reserved batch half-moves and is limited to 5,000.");
+        await ResourceAdmission.Reserve(db, owner, WorkBudget.Analysis, ct, units: fresh.Sum(g => g.plies), pendingJobs: fresh.Length + 1);
         var batch = new ImportAnalysisBatch { OwnerId = owner, ImportJobId = id, Profile = input.Profile, RunIdsJson = "[]", ReusedReviews = games.Count - fresh.Length };
         var ids = new List<Guid>();
         foreach (var game in games)

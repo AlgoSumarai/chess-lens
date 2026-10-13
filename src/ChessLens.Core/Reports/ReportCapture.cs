@@ -61,11 +61,8 @@ public sealed class ReportCapture(LensDbContext db)
 
     private async Task<bool> Reserve(string owner, CancellationToken ct)
     {
-        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(hashtextextended('chesslens-report-admission', 0))", ct);
-        if (await db.ReportSnapshots.AnyAsync(r => r.OwnerId == owner && (r.State == "queued" || r.State == "running"), ct) ||
-            await db.ResourceUsages.Where(u => u.OwnerId == owner && u.Kind == "report" && u.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1)).SumAsync(u => u.Units, ct) >= 20 ||
-            await db.ReportSnapshots.CountAsync(r => r.State == "queued" || r.State == "running", ct) >= 1000) return false;
-        db.ResourceUsages.Add(new() { OwnerId = owner, Kind = "report" }); return true;
+        if (await db.ReportSnapshots.AnyAsync(r => r.OwnerId == owner && (r.State == "queued" || r.State == "running"), ct)) return false;
+        await ResourceAdmission.Reserve(db, owner, WorkBudget.Report, ct); return true;
     }
 
     private async Task<ReportSelection> Select(string owner, ReportPeriod period, ProgressFilter? filter, int maximumGames, DateTimeOffset cutoff, CancellationToken ct, bool currentPeriod = false)

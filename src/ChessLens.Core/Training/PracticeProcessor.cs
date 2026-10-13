@@ -173,13 +173,8 @@ public static class PracticeAdmission
         db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({owner}, 0))", ct);
     public static async Task<bool> Reserve(LensDbContext db, string owner, bool newSession, CancellationToken ct, bool activate = false)
     {
-        await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(hashtextextended('chesslens-practice-admission', 0))", ct);
-        var day = DateTimeOffset.UtcNow.AddDays(-1);
         if ((newSession || activate) && await db.PracticeSessions.CountAsync(s => s.OwnerId == owner && (s.State == "active" || s.State == "preparing" || s.State == "waiting"), ct) >= 2) return false;
-        if (newSession && await db.ResourceUsages.Where(u => u.OwnerId == owner && u.Kind == "practice-session" && u.CreatedAt > day).SumAsync(u => u.Units, ct) >= 40) return false;
-        if (await db.ResourceUsages.Where(u => u.OwnerId == owner && u.Kind == "practice-job" && u.CreatedAt > day).SumAsync(u => u.Units, ct) >= 200 ||
-            await db.PracticeJobs.CountAsync(j => j.State == "queued" || j.State == "running", ct) >= 1000) return false;
-        if (newSession) db.ResourceUsages.Add(new() { OwnerId = owner, Kind = "practice-session" });
-        db.ResourceUsages.Add(new() { OwnerId = owner, Kind = "practice-job" }); return true;
+        if (newSession) await ResourceAdmission.Reserve(db, owner, WorkBudget.PracticeSession, ct, pendingJobs: 0);
+        await ResourceAdmission.Reserve(db, owner, WorkBudget.PracticeJob, ct); return true;
     }
 }

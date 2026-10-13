@@ -41,8 +41,7 @@ public static class PositionAnalysisEndpoints
         }
         if (channel is null)
         {
-            if (await db.PositionReviewChannels.CountAsync(c => c.OwnerId == owner && c.UpdatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 200)
-                return Results.Problem(statusCode: 429, title: "Daily review channel limit reached");
+            await ResourceAdmission.Reserve(db, owner, WorkBudget.PositionChannel, ct, pendingJobs: 0);
             channel = new() { Id = input.ChannelId, OwnerId = owner, GameId = id };
             db.PositionReviewChannels.Add(channel);
         }
@@ -50,13 +49,13 @@ public static class PositionAnalysisEndpoints
         if (!input.CancelOnly)
         {
             if (input.Ply < 0 || input.Ply > game.Moves.Count) throw new ArgumentException("Choose a position in this completed game.");
-            if (await db.PositionAnalysisJobs.CountAsync(j => j.OwnerId == owner && j.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 200)
-                return Results.Problem(statusCode: 429, title: "Daily position analysis budget reached", detail: "The limit is 200 position reviews per day, including cancelled work.");
             if (await db.PositionAnalysisJobs.CountAsync(j => j.OwnerId == owner && j.ChannelId != input.ChannelId && (j.State == "running" || j.State == "queued"), ct) >= 2)
                 return Results.Problem(statusCode: 429, title: "Position review queue is full", detail: "Stop an active position review before starting another.");
             var history = game.Moves.OrderBy(m => m.Ply).Take(input.Ply).Select(m => m.Uci).Concat(input.Variation).ToArray();
             var board = ChessRules.Replay(game.InitialFen, history);
             if (ChessRules.View(board).LegalMoves.Length == 0) throw new ArgumentException("This position has ended; there is no continuation to analyse.");
+            var replaced = await db.PositionAnalysisJobs.CountAsync(j => j.ChannelId == channel.Id && (j.State == "queued" || j.State == "running"), ct);
+            await ResourceAdmission.Reserve(db, owner, WorkBudget.Position, ct, pendingJobs: Math.Max(0, 1 - replaced));
             job = new() { OwnerId = owner, GameId = id, ChannelId = channel.Id, Sequence = input.Sequence, Ply = input.Ply,
                 InitialFen = game.InitialFen, HistoryJson = JsonSerializer.Serialize(history), Fen = board.ToFen() };
         }
