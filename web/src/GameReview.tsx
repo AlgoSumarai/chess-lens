@@ -8,7 +8,7 @@ import { useAnalysis } from './analysis';
 import { AnalysisPanel, EvaluationBar, EvaluationGraph } from './AnalysisPanel';
 import { PositionAnalysisPanel } from './PositionAnalysisPanel';
 
-export function GameReview({ id, initialPly = 0, runId }: { id: string; initialPly?: number; runId?: string }) {
+export function GameReview({ id, initialPly = 0, runId, coachingLevel = 'beginner', modelOptIn = false }: { id: string; initialPly?: number; runId?: string; coachingLevel?: string; modelOptIn?: boolean }) {
   const { data: game, error, reload } = useRemote<Game>(`/games/${id}`);
   if (error) return <ErrorNotice message={error} retry={reload} />;
   if (!game) return <p aria-busy="true">Opening your game…</p>;
@@ -17,11 +17,11 @@ export function GameReview({ id, initialPly = 0, runId }: { id: string; initialP
         <p>Viewing the saved analysis referenced by this evidence.</p>
         <a href={`#/games/${id}?ply=${initialPly}`}>Open the latest review</a>
       </Panel>}
-    <Review game={game} reload={reload} initialPly={initialPly} runId={runId} />
+    <Review game={game} reload={reload} initialPly={initialPly} runId={runId} coachingLevel={coachingLevel} modelOptIn={modelOptIn} />
     </>;
 }
 
-function Review({ game, reload, initialPly, runId }: { game: Game; reload: () => void; initialPly: number; runId?: string }) {
+function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: { game: Game; reload: () => void; initialPly: number; runId?: string; coachingLevel: string; modelOptIn: boolean }) {
   const analysis = useAnalysis(game.id, runId);
   const [ply, setPly] = useState(Number.isInteger(initialPly) ? Math.max(0, Math.min(initialPly, game.moves.length)) : 0);
   const [variation, setVariation] = useState<string[]>([]);
@@ -245,7 +245,7 @@ function Review({ game, reload, initialPly, runId }: { game: Game; reload: () =>
           variation={variation} fen={position?.fen ?? local.fen()} 
           ready={!busy && !!position?.legalMoves.length} 
           revision={analysis.positionRevision} />
-        <AnalysisPanel game={game} run={analysis.data} current={moveAnalysis} 
+        <AnalysisPanel game={game} run={analysis.data} current={moveAnalysis} coachingLevel={coachingLevel} modelOptIn={modelOptIn}
           exploring={variation.length > 0} error={analysis.error} 
           reload={analysis.reload} connected={analysis.connected} 
           readOnly={!!runId} />

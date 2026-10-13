@@ -27,7 +27,7 @@ public static class AnalysisEndpoints
         });
         api.MapPost("/analysis/{id:guid}/cancel", async (Guid id, ClaimsPrincipal user, LensDbContext db, CancellationToken ct) =>
         {
-            var count = await db.AnalysisRuns.Where(r => r.Id == id && r.OwnerId == user.Owner() && (r.State == "running" || r.State == "queued"))
+            var count = await db.AnalysisRuns.Where(r => r.Id == id && r.OwnerId == user.Owner() && (r.State == "waiting" || r.State == "running" || r.State == "queued"))
                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.CancelRequested, true).SetProperty(r => r.Version, r => r.Version + 1)
                     .SetProperty(r => r.UpdatedAt, DateTimeOffset.UtcNow), ct);
             return count == 0 ? Results.NotFound() : Results.Accepted($"/api/analysis/{id}");

@@ -77,4 +77,38 @@ public sealed class InsightSnapshotTests(DatabaseFixture fixture)
         (await alice.DeleteAsync("/api/account/data")).EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.NotFound, (await alice.GetAsync($"/api/insights/{id}")).StatusCode);
     }
+
+    [Fact]
+    public async Task Resumed_v1_snapshots_keep_legacy_rules_and_new_v2_settings_preserve_prior_results()
+    {
+        var (client, owner) = await Account(); using var account = client;
+        var input = ObjectiveInsightTests.Fixture(); input.Run.OwnerId = owner;
+        var filter = new InsightFilter(new(2026, 10, 1, 0, 0, 0, TimeSpan.Zero), new(2026, 11, 1, 0, 0, 0, TimeSpan.Zero));
+        var legacy = new InsightSnapshot { OwnerId = owner, FilterJson = JsonSerializer.Serialize(filter), OptionsJson = "{\"MinimumGames\":5,\"RecurringGames\":3,\"OpeningFullMoves\":10,\"MinimumLoss\":100,\"MinimumMaterial\":100,\"MinimumClockMoves\":20,\"MinimumClockCoverage\":0.5}",
+            DetectorVersion = InsightRules.LegacyVersion, State = "running", LeaseToken = "labelled-old-worker", LeaseUntil = DateTimeOffset.UtcNow.AddMinutes(-1) };
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LensDbContext>(); db.Games.Add(input.Game);
+            db.UserGames.Add(new() { OwnerId = owner, GameId = input.Game.Id, PlayerColour = "white" }); db.AnalysisRuns.Add(input.Run);
+            db.InsightSnapshots.Add(legacy); await db.SaveChangesAsync();
+        }
+        await Process();
+        var old = await account.GetFromJsonAsync<JsonElement>($"/api/insights/{legacy.Id}");
+        var oldSummary = old.GetProperty("result").GetProperty("groups")[0].GetProperty("summary");
+        Assert.Equal(InsightRules.LegacyVersion, oldSummary.GetProperty("detectorVersion").GetString()); Assert.Empty(oldSummary.GetProperty("findings").EnumerateArray());
+        var created = await account.PostAsJsonAsync("/api/insights", filter); created.EnsureSuccessStatusCode();
+        var id = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid(); await Process();
+        var current = await account.GetFromJsonAsync<JsonElement>($"/api/insights/{id}");
+        var currentSummary = current.GetProperty("result").GetProperty("groups")[0].GetProperty("summary");
+        Assert.Equal(InsightRules.Version, currentSummary.GetProperty("detectorVersion").GetString()); Assert.Equal(2, currentSummary.GetProperty("findings").GetArrayLength());
+        var changed = new InsightSnapshot { OwnerId = owner, FilterJson = JsonSerializer.Serialize(filter), OptionsJson = JsonSerializer.Serialize(new InsightOptions { ConversionPersistenceDecisions = 4, EndgameMinimumLoss = 500 }) };
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LensDbContext>(); db.InsightSnapshots.Add(changed); await db.SaveChangesAsync();
+        }
+        await Process();
+        Assert.Empty((await account.GetFromJsonAsync<JsonElement>($"/api/insights/{changed.Id}")).GetProperty("result").GetProperty("groups")[0].GetProperty("summary").GetProperty("findings").EnumerateArray());
+        Assert.Equal(old.GetProperty("result").GetRawText(), (await account.GetFromJsonAsync<JsonElement>($"/api/insights/{legacy.Id}")).GetProperty("result").GetRawText());
+        Assert.Equal(current.GetProperty("result").GetRawText(), (await account.GetFromJsonAsync<JsonElement>($"/api/insights/{id}")).GetProperty("result").GetRawText());
+    }
 }

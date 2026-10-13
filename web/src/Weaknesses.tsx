@@ -7,13 +7,15 @@ import { CreatePuzzleButton } from './Puzzles';
 type Evidence = { gameId: string; runId: string; ply: number; side: string; classification: string; source: string; timeControl: string | null; playedAt: string | null; explanation: string };
 type Finding = { category: string; group: string; claim: string; status: string; confidence: string; eligibleGames: number; eligibleMoves: number; occurrences: number; affectedGames: number;
   occurrenceRate: number; lossesAmongAffectedGames: number; centipawnLossSum: number; mateTransitions: number; practice: string; evidence: Evidence[] };
-type Summary = { analysedGames: number; eligibleMoves: number; verifiedErrorMoves: number; provisionalMoves: number; rejectedEvidenceMoves: number; clockMoves: number; clockCoverage: number; clockAvailable: boolean; findings: Finding[] };
+type Summary = { analysedGames: number; eligibleMoves: number; verifiedErrorMoves: number; provisionalMoves: number; rejectedEvidenceMoves: number; clockMoves: number; clockCoverage: number; clockAvailable: boolean; findings: Finding[];
+  categoryCoverage?: { category: string; candidateDecisions: number; stableEvidenceDecisions: number; eligibleDecisions: number; eligibleGames: number;
+    missingOrProvisionalDecisions: number; rejectedEvidenceDecisions: number; denominator: string; centipawnOpportunities: number; mateOpportunities: number }[] | null };
 type Group = { engine: string; profile: string; analysisVersion: string; summary: Summary; classificationSettings: { inaccuracyCentipawns: number; mistakeCentipawns: number; blunderCentipawns: number } };
 export type InsightSnapshot = { id: string; state: string; version: number; createdAt: string; detectorVersion: string; error: string | null;
   filter: { from: string; to: string; source: string | null; colour: string | null; opening: string | null; timeControl: string | null; maximumGames: number };
   result: null | { matchingGames: number; selectedGames: number; missingIdentityGames: number; withoutCompletedAnalysis: number; undatedGamesExcluded: number; selectionCapped: boolean; groups: Group[];
     options: { minimumGames: number; recurringGames: number; minimumClockMoves: number; minimumClockCoverage: number } } };
-const names: Record<string, string> = { 'hanging-material': 'Material safety', 'missed-tactics': 'Tactical opportunities', 'opening-mistakes': 'Opening decisions', 'time-trouble': 'Time use' };
+const names: Record<string, string> = { 'hanging-material': 'Material safety', 'missed-tactics': 'Tactical opportunities', 'opening-mistakes': 'Opening decisions', 'time-trouble': 'Time use', 'conversion-problems': 'Keeping an advantage', 'endgame-errors': 'Endgame decisions' };
 
 export function Weaknesses() {
   const { data: snapshot, error, reload } = useRemote<InsightSnapshot | null>('/insights', 2500);
@@ -53,6 +55,12 @@ export function Weaknesses() {
         <small>Classification thresholds: {chosen.classificationSettings.inaccuracyCentipawns}/{chosen.classificationSettings.mistakeCentipawns}/{chosen.classificationSettings.blunderCentipawns} centipawns. Mate transitions are separate.</small>
         {summary.rejectedEvidenceMoves > 0 && <p>{summary.rejectedEvidenceMoves} error records lacked consistent legal evidence and were excluded.</p>}
         <p>Usable timing: {summary.clockMoves}/{summary.eligibleMoves} moves ({(summary.clockCoverage * 100).toFixed(0)}%). {!summary.clockAvailable && `Time-trouble findings are unavailable: at least ${result.options.minimumClockMoves} moves and ${(result.options.minimumClockCoverage * 100).toFixed(0)}% coverage are required.`}</p></Panel>
+        {!!summary.categoryCoverage?.length && <Panel><h2>Where the new rules can look</h2>{summary.categoryCoverage.map(c => <div className="practice-note" key={c.category}>
+          <h3>{names[c.category]}</h3><p>{c.stableEvidenceDecisions}/{c.candidateDecisions} candidate decisions have stable, legal engine evidence. {c.missingOrProvisionalDecisions} need a complete or deeper review; {c.rejectedEvidenceDecisions} had inconsistent evidence.</p>
+          <p>{c.eligibleDecisions} eligible {c.denominator} across {c.eligibleGames} games.
+            {c.category === 'conversion-problems' && ` ${c.centipawnOpportunities} centipawn advantages and ${c.mateOpportunities} winning-mate opportunities, counted separately.`}</p>
+          {c.eligibleDecisions === 0 && <p>No supported opportunity is available in this selection. This does not establish that your conversion or endgame play is error-free.</p>}
+        </div>)}</Panel>}
         {!summary.findings.length && <Panel className="empty"><h2>No supported pattern yet.</h2><p>These rules found no supported weakness. Review more comparable games; absence of a finding is not proof of error-free play.</p></Panel>}
         <div className="weakness-list">{summary.findings.map(f => <Panel key={f.category + f.group}><div className="section-title"><h2>{names[f.category]}</h2><span className="pill">{f.status === 'early-signal' ? 'Early signal' : 'Recurring pattern'}</span></div>
           <p className="eyebrow">{f.group}</p><h3>{f.claim}</h3><p>{f.occurrences}/{f.eligibleMoves} eligible moves ({(f.occurrenceRate * 100).toFixed(1)}%) · {f.confidence} confidence. {f.lossesAmongAffectedGames}/{f.affectedGames} affected games ended in losses; this is an association, not a proven cause.</p>

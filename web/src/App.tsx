@@ -89,7 +89,7 @@ export function App() {
           route === '/puzzles' ? <PuzzleLibrary /> : 
           routePath.startsWith('/puzzles/attempts/') ? <PuzzleAttemptPage id={routePath.split('/')[3]} key={route} /> : 
           routePath.startsWith('/puzzles/') ? <PuzzlePage id = {routePath.split('/')[2]} key = {route} /> : 
-          routePath.startsWith('/games/') ? <GameReview id = {routePath.split('/')[2]} initialPly = {Number(routeQuery.get('ply') ?? 0)} runId = {routeQuery.get('run') ?? undefined} key={route} /> :
+          routePath.startsWith('/games/') ? <GameReview id = {routePath.split('/')[2]} initialPly = {Number(routeQuery.get('ply') ?? 0)} runId = {routeQuery.get('run') ?? undefined} coachingLevel={user.coachingLevel} modelOptIn={user.useModelCoaching} key={route} /> :
           route === '/settings' ? <Settings user={user} onUpdate={setUser} onSignOut={() => setUser(null)} /> : 
           <Panel><h1>Page not found</h1><a href="#/">Return to overview</a></Panel>
         }
@@ -294,7 +294,7 @@ function Settings({ user, onUpdate, onSignOut }: { user: User; onUpdate: (u: Use
     setError(''); 
     setSaved(false);
     try { 
-      onUpdate(await send<User>('/account/preferences', Object.fromEntries(f), 'PUT'));
+      onUpdate(await send<User>('/account/preferences', { ...Object.fromEntries(f), useModelCoaching: f.get('useModelCoaching') === 'on' }, 'PUT'));
       setSaved(true);
      } catch (e) { 
       setError((e as Error).message); 
@@ -322,6 +322,8 @@ function Settings({ user, onUpdate, onSignOut }: { user: User; onUpdate: (u: Use
             <label>Preferred time control
               <select name="preferredTimeControls" defaultValue={user.preferredTimeControls}>{['bullet', 'blitz', 'rapid', 'classical', 'correspondence'].map(t => 
                 <option key={t}>{t}</option>)}</select></label>
+            <label className="checkbox-label"><input name="useModelCoaching" type="checkbox" defaultChecked={user.useModelCoaching} /> Use optional model-selected coaching when configured</label>
+            <small>Factual coaching works at every level without a model key. Optional requests require a configured server budget and your selection here. Provider ratings stay separate.</small>
             <ErrorNotice message={error} />
             <button className="primary">Save preferences</button>
             {saved && <p role="status">Preferences saved.</p>}

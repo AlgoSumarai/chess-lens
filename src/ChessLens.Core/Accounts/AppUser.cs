@@ -8,6 +8,7 @@ public sealed class AppUser : IdentityUser
     public string CoachingLevel { get; set; } = "beginner";
     public string PreferredTimeControls { get; set; } = "rapid";
     public bool IsDemo { get; set; }
+    public bool UseModelCoaching { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

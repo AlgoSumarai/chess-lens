@@ -106,7 +106,7 @@ public static class GameEndpoints
         if (association is null) return Results.NotFound();
         var game = association.Game;
         return Results.Ok(new { game.Id, association.PlayerColour, game.White, game.Black, game.WhiteRating, game.BlackRating, game.Result,
-            game.PlayedAt, game.StartedAt, game.FinishedAt, game.Provider, game.Url, game.RatingPool, game.Rated, game.Termination, game.TimeControl, game.Opening, game.Eco, game.RawPgn, game.InitialFen,
+            game.PlayedAt, game.StartedAt, game.FinishedAt, game.Provider, game.ExternalId, game.Url, game.RatingPool, game.Rated, game.Termination, game.TimeControl, game.Opening, game.Eco, game.RawPgn, game.InitialFen,
             moves = game.Moves.OrderBy(m => m.Ply) });
     }
 

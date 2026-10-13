@@ -4,14 +4,15 @@ import { send, type Game } from './api';
 import { scoreLabel, whiteScore, type Analysis, type MoveAnalysis } from './analysis';
 import { ErrorNotice, Panel } from './App';
 import { CreatePuzzleButton } from './Puzzles';
+import { Coaching } from './Coaching';
 
-export function AnalysisPanel({ game, run, current, exploring, error, reload, connected, readOnly = false }: { game: Game; run: Analysis | null | undefined; current?: MoveAnalysis; exploring: boolean; error: string; reload: () => void; connected: boolean; readOnly?: boolean }) {
+export function AnalysisPanel({ game, run, current, exploring, error, reload, connected, readOnly = false, coachingLevel = 'beginner', modelOptIn = false }: { game: Game; run: Analysis | null | undefined; current?: MoveAnalysis; exploring: boolean; error: string; reload: () => void; connected: boolean; readOnly?: boolean; coachingLevel?: string; modelOptIn?: boolean }) {
   const [pending, setPending] = useState(false); const [problem, setProblem] = useState('');
   const queue = async (profile: string) => {
     setPending(true); setProblem('');
     try { await send(`/games/${game.id}/analysis`, { profile }); reload(); } catch (e) { setProblem((e as Error).message); } finally { setPending(false); }
   };
-  const active = run && ['queued', 'running'].includes(run.state);
+  const active = run && ['waiting', 'queued', 'running'].includes(run.state);
   let bestSan = current?.bestMove;
   let line = '';
   if (current) {
@@ -19,11 +20,20 @@ export function AnalysisPanel({ game, run, current, exploring, error, reload, co
   }
   return <Panel className="engine-panel"><div className="section-title"><h2>Engine review</h2>{run?.engineVersion && <span className="pill">{run.engineVersion}</span>}</div><ErrorNotice message={error || problem} retry={reload} />
     {!run && <p>See the moments that changed this game. Quick reviews are provisional; critical positions receive a deeper check.</p>}
-    {active && <><progress max={run.totalPlies || 1} value={run.completedPlies} aria-label="Analysis progress" /><p role="status" aria-label="Analysis status">{run.state === 'queued' ? 'Waiting for an engine…' : `Reviewed ${run.completedPlies} of ${run.totalPlies} half-moves.`} {connected ? 'Live updates connected.' : 'Reconnecting; progress is saved.'}</p><button disabled={run.cancelRequested} onClick={() => void send(`/analysis/${run.id}/cancel`).then(reload).catch(e => setProblem(e.message))}>{run.cancelRequested ? 'Cancelling…' : 'Cancel analysis'}</button></>}
+    {active && <><progress max={run.totalPlies || 1} value={run.completedPlies} aria-label="Analysis progress" /><p role="status" aria-label="Analysis status">{['waiting', 'queued'].includes(run.state) ? 'Waiting for an engine…' : `Reviewed ${run.completedPlies} of ${run.totalPlies} half-moves.`} {connected ? 'Live updates connected.' : 'Reconnecting; progress is saved.'}</p><button disabled={run.cancelRequested} onClick={() => void send(`/analysis/${run.id}/cancel`).then(reload).catch(e => setProblem(e.message))}>{run.cancelRequested ? 'Cancelling…' : 'Cancel analysis'}</button></>}
     {run?.error && <p role="status">{run.error}</p>}
     {run && !active && <p className="metadata">{run.state} · {run.profile} review · {run.completedPlies}/{run.totalPlies} half-moves</p>}
-    {exploring ? <p>Return to the mainline to see this game's recorded evaluation.</p> : current ? <div className="coaching"><span className={`classification ${current.classification}`}>{current.classification}{current.provisional ? ' · provisional' : ''}</span><h3>{current.classification === 'sound' ? 'The position holds up.' : `Consider ${bestSan}.`}</h3><p>{current.centipawnLoss !== null ? `${game.moves[current.ply - 1].san} changed the evaluation by ${(current.centipawnLoss / 100).toFixed(2)} pawns against the moving player, compared with the engine's best continuation.` : current.mateTransition?.replaceAll('-', ' ')}</p><p className="variation-line">{line}</p><small>ChessLens classification · depth {current.depth}. {current.provisional ? 'Treat this as an early indication.' : 'Critical losses were checked with deeper analysis.'}</small></div> : run && <p>Select an analysed move to inspect its evaluation and best continuation.</p>}
+    {exploring ? <p>Return to the mainline to see this game's recorded evaluation.</p> : current ? <div className="coaching">
+      <span className={`classification ${current.classification}`}>{current.classification}{current.provisional ? ' · provisional' : ''}</span>
+      <h3>{current.mateTransition === 'already-facing-mate' ? 'This position already faces forced mate.' : current.mateTransition === 'mate-maintained' ? 'The mating continuation remains available.' : current.classification === 'sound' ? 'The checked evaluation holds up.' : `Consider ${bestSan}.`}</h3>
+      {(current.provisional || run?.state !== 'completed') && <>
+        <p>{current.centipawnLoss !== null ? `${game.moves[current.ply - 1].san} changed the evaluation by ${(current.centipawnLoss / 100).toFixed(2)} pawns against the moving player, compared with the engine's best continuation.` : current.mateTransition?.replaceAll('-', ' ')}</p>
+        <p className="variation-line">{line}</p>
+      </>}
+      <small>ChessLens classification · depth {current.depth}. {current.provisional ? 'Treat this as an early indication.' : 'Saved legal engine evidence supports this result.'}</small>
+    </div> : run && <p>Select an analysed move to inspect its evaluation and best continuation.</p>}
     {!active && !readOnly && <div className="analysis-actions"><button className="primary" disabled={pending} onClick={() => void queue('quick')}>{pending ? 'Queuing…' : run ? 'Run quick review again' : 'Analyse game'}</button><button disabled={pending} onClick={() => void queue('deep')}>Deep review</button></div>}
+    {!exploring && run?.state === 'completed' && current?.complete && !current.provisional && <Coaching runId={run.id} ply={current.ply} fen={game.moves[current.ply - 1].fenBefore} level={coachingLevel} modelOptIn={modelOptIn} />}
     {!exploring && run?.state === 'completed' && current?.complete && !current.provisional && current.side === game.playerColour && (current.centipawnLoss !== null && current.centipawnLoss >= 100 || current.mateTransition === 'missed-forced-mate' || current.mateTransition === 'allowed-forced-mate') && <CreatePuzzleButton runId={run.id} ply={current.ply} />}
   </Panel>;
 }

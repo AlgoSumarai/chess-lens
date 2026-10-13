@@ -25,7 +25,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 export function send<T>(path: string, data?: unknown, method = 'POST') {
   return api<T>(path, { method, body: data === undefined ? undefined : JSON.stringify(data) });
 }
-export type User = { id: string; email: string; timezone: string; coachingLevel: string; preferredTimeControls: string; isDemo: boolean };
+export type User = { id: string; email: string; timezone: string; coachingLevel: string; preferredTimeControls: string; isDemo: boolean; useModelCoaching: boolean };
 export type GameSummary = { id: string; white: string; black: string; whiteRating: number | null; blackRating: number | null; result: string; playerColour: 'white' | 'black' | null; playedAt: string | null; provider: string; timeControl: string | null; opening: string | null; plies: number };
 export type Move = { ply: number; san: string; uci: string; fenBefore: string; fenAfter: string; side: string; clockSeconds: number | null };
 export type Game = GameSummary & { initialFen: string; moves: Move[]; rawPgn: string; termination: string | null };

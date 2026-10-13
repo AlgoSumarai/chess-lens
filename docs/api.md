@@ -9,7 +9,7 @@ Requests and responses use camelCase JSON. Authentication uses an HttpOnly `ches
 | POST `/api/account/demo` | Creates a new isolated demo owner and queues labelled sample games. |
 | POST `/api/account/logout` | Ends session. |
 | GET `/api/account/me` | Account ID, email, timezone, coaching level, preferred time control, demo flag. |
-| PUT `/api/account/preferences` | `{timezone,coachingLevel,preferredTimeControls}`. |
+| PUT `/api/account/preferences` | `{timezone,coachingLevel,preferredTimeControls,useModelCoaching:false}`. |
 | DELETE `/api/account/data` | Deletes the owner's associations, jobs and derived records; removes source games with no remaining owner. |
 | POST `/api/imports/pgn` | `{pgn,playerName?,maxGames:50}`. Raw UTF-8 PGN <=5MB; 1–200 selected games; <=1,000 plies/game. Returns 202 with job ID and Location. |
 | POST `/api/imports/provider` | `{provider:"chesscom"\|"lichess",username,from,to,maxGames:50}`. Public completed-game import; inclusive/exclusive UTC dates <=366 days, 1–200 games. Returns 202/job; identical active requests reuse it. |
@@ -42,7 +42,7 @@ Requests and responses use camelCase JSON. Authentication uses an HttpOnly `ches
 
 Endpoint: `/hubs/progress`. Cookie-authenticated connections join only their server-derived owner group. `SubscribeJob(id)` checks ownership and cannot grant cross-owner access. Browser origins are validated against `AllowedOrigins`.
 
-Event `jobProgress`: `{kind:"import"|"analysis"|"position"|"insights"|"puzzle"|"batch",id,version,gameId?,state}`. Import state includes counts and per-game failures. Analysis state includes run counts and the latest completed move result; position state includes the exact selected FEN, sequence and candidate results when complete. Insight and puzzle notifications contain their saved state name; fetch the HTTP resource for details. Events are hints: clients fetch authoritative HTTP state on connection, reconnection and notifications, retain the greatest version, ignore stale/duplicate events and periodically reconcile if the stream is unavailable. No correctness depends on uninterrupted delivery.
+Event `jobProgress`: `{kind:"import"|"analysis"|"position"|"insights"|"puzzle"|"batch"|"coaching",id,version,gameId?,state}`. Import state includes counts and per-game failures. Analysis state includes run counts and the latest completed move result; position state includes the exact selected FEN, sequence and candidate results when complete. Insight and puzzle notifications contain their saved state name; fetch the HTTP resource for details. Events are hints: clients fetch authoritative HTTP state on connection, reconnection and notifications, retain the greatest version, ignore stale/duplicate events and periodically reconcile if the stream is unavailable. No correctness depends on uninterrupted delivery.
 
 Every score is `{kind:"cp"|"mate",value}` from the recorded moving player's perspective. The frontend flips the sign only for its explicitly labelled White-perspective graph. Mate distances are not converted to centipawns. Every result preserves effective engine/settings, search budget, depth, nodes, legal PV and analysis version in persistence. Engine startup has a configurable `Stockfish:StartupTimeoutSeconds` bound of 5–120 seconds (default 120 to accommodate cold container starts); analysis leases last five minutes, exceeding a startup plus the bounded verification search pair.
 
@@ -91,3 +91,11 @@ New `chesslens-analysis-v3` reviews verify critical errors by stable classificat
 | POST | `/api/puzzles/attempts/{id}/reveal` | `{version}` finishes the attempt and reveals the solution. |
 
 All operations require the authenticated owner; mutations require CSRF. Stale attempt commands return 409; illegal moves return 400 without finishing the attempt. Scheduling and attempt completion commit together. `jobProgress` with `kind:"puzzle"`, `id`, `version` and saved `state` signals validation updates. The puzzle screen reconnects with backoff, ignores stale notifications and reconciles state through HTTP. See [puzzle-rules.md](puzzle-rules.md) for exact publication, resource and spaced-review rules.
+
+## Saved decision coaching
+
+`POST /api/coaching` accepts `{runId,ply}` for a completed, non-provisional, consistent legal saved decision owned by the account. It returns 202 and a cached explanation/job with `Location: /api/coaching/{id}`. `GET /api/coaching/{id}` returns owner-scoped state/version and the result when available; `POST /api/coaching/{id}/cancel` cancels queued/running optional work and prevents late publication. All mutations require CSRF.
+
+The result includes evidence hash, exact run/ply/FEN, level, distinct provider/pool/time-control rating context, what happened, why it mattered, legal UCI/SAN continuation, one reusable lesson, `mode` (`factual` or `model-selected`), fallback reason, prompt/analysis/engine versions and optional returned model/provider/response provenance. No key or positive configured budget means an immediate factual result. Unsupported structured plans fall back to facts. The model selects only supported facts/lessons and a checked line; it cannot determine mistakes or add motifs. See [coaching rules and limits](coaching-rules.md).
+
+V2 insight responses add objective-specific `categoryCoverage` and evidence `conversionObjective` fields. A queued historical v1 snapshot retains v1 rules; completed snapshots never change after a detector/settings upgrade. See [analytics rules](analytics-rules.md).

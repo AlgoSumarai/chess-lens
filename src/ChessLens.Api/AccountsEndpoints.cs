@@ -53,6 +53,7 @@ public static class AccountsEndpoints
         if (!new[] { "bullet", "blitz", "rapid", "classical", "correspondence" }.Contains(input.PreferredTimeControls)) throw new ArgumentException("Choose a time control.");
         var user = (await users.FindByIdAsync(principal.Owner()))!;
         user.Timezone = input.Timezone; user.CoachingLevel = input.CoachingLevel; user.PreferredTimeControls = input.PreferredTimeControls;
+        user.UseModelCoaching = input.UseModelCoaching;
         var result = await users.UpdateAsync(user);
         return result.Succeeded ? Results.Ok(View(user)) : Results.Conflict();
     }
@@ -72,8 +73,8 @@ public static class AccountsEndpoints
         return Results.NoContent();
     }
 
-    private static object View(AppUser u) => new { u.Id, u.Email, u.Timezone, u.CoachingLevel, u.PreferredTimeControls, u.IsDemo };
+    private static object View(AppUser u) => new { u.Id, u.Email, u.Timezone, u.CoachingLevel, u.PreferredTimeControls, u.IsDemo, u.UseModelCoaching };
 }
 
 public sealed record Credentials(string Email, string Password);
-public sealed record PreferencesRequest(string Timezone, string CoachingLevel, string PreferredTimeControls);
+public sealed record PreferencesRequest(string Timezone, string CoachingLevel, string PreferredTimeControls, bool UseModelCoaching = false);

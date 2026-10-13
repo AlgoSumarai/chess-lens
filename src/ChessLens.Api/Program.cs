@@ -3,6 +3,7 @@ using ChessLens.Api;
 using ChessLens.Core.Accounts;
 using ChessLens.Core.Persistence;
 using ChessLens.Core.Insights;
+using ChessLens.Core.Coaching;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -37,6 +38,7 @@ builder.Services.AddAntiforgery(o => { o.HeaderName = "X-CSRF-TOKEN"; o.Cookie.S
 builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
 builder.Services.Configure<InsightOptions>(builder.Configuration.GetSection("Insights"));
+builder.Services.Configure<CoachingOptions>(builder.Configuration.GetSection("Coaching"));
 builder.Services.AddExceptionHandler<ApiErrors>();
 builder.Services.AddSignalR(o => { o.MaximumReceiveMessageSize = 4096; o.EnableDetailedErrors = false; });
 builder.Services.AddHostedService<ProgressBroadcaster>();
@@ -98,6 +100,7 @@ app.MapPuzzles();
 app.MapHub<ProgressHub>("/hubs/progress").RequireAuthorization();
 app.MapGames();
 app.MapImportBatches();
+app.MapCoaching();
 app.Run();
 
 public partial class Program;

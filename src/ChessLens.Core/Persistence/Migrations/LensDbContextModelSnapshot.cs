@@ -88,6 +88,9 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("UseModelCoaching")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -456,6 +459,127 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.HasIndex("OwnerId", "UpdatedAt");
 
                     b.ToTable("PositionReviewChannels");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Coaching.CoachingJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CacheIdentity")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EvidenceJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LeaseToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Model")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("ModelAttempted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ModelRequested")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Ply")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PromptVersion")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "CacheIdentity")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerId", "CreatedAt");
+
+                    b.HasIndex("OwnerId", "GameId");
+
+                    b.HasIndex("RunId", "Ply");
+
+                    b.HasIndex("State", "LeaseUntil");
+
+                    b.ToTable("CoachingJobs");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Coaching.CoachingUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("MaximumInputBytes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaximumOutputTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("ReservedMicroDollars")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("OwnerId", "CreatedAt");
+
+                    b.ToTable("CoachingUsages");
                 });
 
             modelBuilder.Entity("ChessLens.Core.Games.GameMove", b =>
@@ -1108,6 +1232,35 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.HasOne("ChessLens.Core.Games.UserGame", null)
                         .WithMany()
                         .HasForeignKey("OwnerId", "GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Coaching.CoachingJob", b =>
+                {
+                    b.HasOne("ChessLens.Core.Games.UserGame", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ChessLens.Core.Analysis.MoveAnalysis", null)
+                        .WithMany()
+                        .HasForeignKey("RunId", "Ply")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Coaching.CoachingUsage", b =>
+                {
+                    b.HasOne("ChessLens.Core.Coaching.CoachingJob", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ChessLens.Core.Accounts.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

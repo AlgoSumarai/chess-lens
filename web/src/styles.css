@@ -1,5 +1,6 @@
 @import "tailwindcss";
 progress{width:100%;accent-color:var(--accent)}
+.grounded-coaching{border-top:1px solid var(--line);margin-top:1.25rem;padding-top:1.25rem}.grounded-coaching p{margin:.75rem 0}.grounded-coaching .section-title{flex-wrap:wrap}.checkbox-label{flex-direction:row;align-items:center}.checkbox-label input{width:22px;min-height:22px;flex-shrink:0}
 
 /* Grid tracks must shrink below the board/graph's intrinsic content width. */
 .review-grid > *{min-width:0}

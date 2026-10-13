@@ -4,6 +4,7 @@ using ChessLens.Core.Games;
 using ChessLens.Core.Imports;
 using ChessLens.Core.Insights;
 using ChessLens.Core.Training;
+using ChessLens.Core.Coaching;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,8 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
     public DbSet<InsightSnapshot> InsightSnapshots => Set<InsightSnapshot>();
     public DbSet<Puzzle> Puzzles => Set<Puzzle>();
     public DbSet<PuzzleAttempt> PuzzleAttempts => Set<PuzzleAttempt>();
+    public DbSet<CoachingJob> CoachingJobs => Set<CoachingJob>();
+    public DbSet<CoachingUsage> CoachingUsages => Set<CoachingUsage>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -118,6 +121,22 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
             e.HasOne<AppUser>().WithMany().HasForeignKey(a => a.OwnerId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(a => new { a.OwnerId, a.PuzzleId }).IsUnique().HasFilter("\"State\" = 'active'");
             e.HasIndex(a => new { a.OwnerId, a.StartedAt });
+        });
+        b.Entity<CoachingJob>(e =>
+        {
+            e.HasOne<UserGame>().WithMany().HasForeignKey(j => new { j.OwnerId, j.GameId }).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<MoveAnalysis>().WithMany().HasForeignKey(j => new { j.RunId, j.Ply }).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(j => new { j.OwnerId, j.CacheIdentity }).IsUnique();
+            e.HasIndex(j => new { j.OwnerId, j.CreatedAt });
+            e.HasIndex(j => new { j.State, j.LeaseUntil });
+            e.Property(j => j.CacheIdentity).HasMaxLength(64);
+        });
+        b.Entity<CoachingUsage>(e =>
+        {
+            e.HasOne<AppUser>().WithMany().HasForeignKey(u => u.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<CoachingJob>().WithMany().HasForeignKey(u => u.JobId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(u => new { u.OwnerId, u.CreatedAt });
+            e.HasIndex(u => u.CreatedAt);
         });
     }
 }

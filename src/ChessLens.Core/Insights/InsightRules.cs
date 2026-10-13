@@ -14,11 +14,20 @@ public sealed class InsightOptions
     public int MinimumMaterial { get; set; } = 100;
     public int MinimumClockMoves { get; set; } = 20;
     public double MinimumClockCoverage { get; set; } = .5;
+    public int ConversionAdvantageCentipawns { get; set; } = 300;
+    public int ConversionLostAdvantageCentipawns { get; set; } = 100;
+    public int ConversionPersistenceDecisions { get; set; } = 2;
+    public int EndgameMaximumNonPawnPieces { get; set; } = 4;
+    public bool EndgameAllowQueens { get; set; }
+    public int EndgameMinimumLoss { get; set; } = 100;
     public void Validate()
     {
         if (MinimumGames is < 2 or > 100 || RecurringGames is < 2 or > 100 || OpeningFullMoves is < 1 or > 30 ||
             MinimumLoss is < 50 or > 1000 || MinimumMaterial is < 100 or > 900 || MinimumClockMoves is < 2 or > 1000 ||
-            MinimumClockCoverage is <= 0 or > 1) throw new ArgumentException("Insight thresholds are outside the supported bounds.");
+            MinimumClockCoverage is <= 0 or > 1 || ConversionAdvantageCentipawns is < 200 or > 1000 ||
+            ConversionLostAdvantageCentipawns is < -200 or > 300 || ConversionLostAdvantageCentipawns >= ConversionAdvantageCentipawns ||
+            ConversionPersistenceDecisions is < 2 or > 5 || EndgameMaximumNonPawnPieces is < 1 or > 8 || EndgameMinimumLoss is < 50 or > 1000)
+            throw new ArgumentException("Insight thresholds are outside the supported bounds.");
     }
 }
 
@@ -26,20 +35,25 @@ public sealed record InsightGame(SourceGame Game, string Colour, AnalysisRun Run
 public sealed record MistakeEvidence(Guid GameId, Guid RunId, int Ply, string Side, string Fen, string PlayedMove, string BestMove,
     string Classification, int? CentipawnLoss, string? MateTransition, string[] Tags, string[] BestLine, string[] PlayedLine,
     int? BestMaterialChange, int? PlayedMaterialChange, double? RemainingSeconds, double? SpentSeconds, string Opening,
-    string Source, string? TimeControl, DateTimeOffset? PlayedAt, string Result, string Explanation);
+    string Source, string? TimeControl, DateTimeOffset? PlayedAt, string Result, string Explanation, string? ConversionObjective = null);
 public sealed record WeaknessFinding(string Category, string Group, string Claim, string Status, string Confidence,
     int EligibleGames, int EligibleMoves, int Occurrences, int AffectedGames, double OccurrenceRate, int LossesAmongAffectedGames,
     int CentipawnLossSum, int MateTransitions, string Severity, string Practice, MistakeEvidence[] Evidence);
 public sealed record InsightSummary(string DetectorVersion, int AnalysedGames, int EligibleMoves, int VerifiedErrorMoves,
-    int ProvisionalMoves, int RejectedEvidenceMoves, int ClockMoves, double ClockCoverage, bool ClockAvailable, WeaknessFinding[] Findings, MistakeEvidence[] Evidence);
+    int ProvisionalMoves, int RejectedEvidenceMoves, int ClockMoves, double ClockCoverage, bool ClockAvailable, WeaknessFinding[] Findings, MistakeEvidence[] Evidence,
+    InsightCategoryCoverage[]? CategoryCoverage = null);
 
 /// <summary>Conservative, deterministic associations derived from immutable engine evidence.</summary>
 public static class InsightRules
 {
-    public const string Version = "chesslens-insights-v1";
-    public static InsightSummary Build(IReadOnlyList<InsightGame> games, InsightOptions options, CancellationToken ct = default)
+    public const string LegacyVersion = "chesslens-insights-v1";
+    public const string Version = "chesslens-insights-v2";
+    public static InsightSummary Build(IReadOnlyList<InsightGame> games, InsightOptions options, CancellationToken ct = default, string? detectorVersion = null)
     {
         options.Validate();
+        detectorVersion ??= Version;
+        if (detectorVersion != Version && detectorVersion != LegacyVersion) throw new ArgumentException("Unsupported saved detector version.");
+        var objective = detectorVersion == Version ? ObjectiveInsights.Build(games, options, ct) : null;
         var evidence = new List<MistakeEvidence>();
         var eligible = new List<(InsightGame Game, GameMove Move, bool Clock)>();
         var provisional = 0;
@@ -57,17 +71,23 @@ public static class InsightRules
                 var clock = Clock(entry.Game.TimeControl, moves, move);
                 eligible.Add((entry, move, clock is not null));
                 if (analysis.Provisional) { provisional++; continue; }
-                if (analysis.CentipawnLoss < options.MinimumLoss || analysis.CentipawnLoss is null &&
-                    analysis.MateTransition is not ("missed-forced-mate" or "allowed-forced-mate")) continue;
+                var decision = objective?.ByDecision.GetValueOrDefault((entry.Game.Id, move.Ply));
+                var forcedMateError = analysis.MateTransition is "missed-forced-mate" or "allowed-forced-mate";
+                var coreError = analysis.CentipawnLoss >= options.MinimumLoss || forcedMateError;
+                var conversionError = decision is not null && ObjectiveInsights.ConversionFailed(decision, options);
+                var endgameError = decision?.Endgame == true && (analysis.CentipawnLoss >= options.EndgameMinimumLoss || forcedMateError);
+                if (!(analysis.CentipawnLoss >= options.MinimumLoss || forcedMateError || conversionError || endgameError)) continue;
                 if (analysis.Classification is not ("inaccuracy" or "mistake" or "blunder")) continue;
                 var position = new EnginePosition(entry.Game.InitialFen, moves.TakeWhile(m => m.Ply < move.Ply).Select(m => m.Uci).ToArray());
                 var best = ReadLine(analysis.BestSearchJson, position, analysis.BestMove);
                 var played = ReadLine(analysis.PlayedSearchJson, position, move.Uci);
-                if (best is null || played is null || best.Score != new EngineScore(analysis.BestScoreKind, analysis.BestScoreValue) ||
+                if (objective is not null && decision is null || best is null || played is null || best.Score != new EngineScore(analysis.BestScoreKind, analysis.BestScoreValue) ||
                     played.Score != new EngineScore(analysis.PlayedScoreKind, analysis.PlayedScoreValue)) { rejected++; continue; }
                 var bestChange = StableMaterialChange(position, best.Pv, entry.Colour);
                 var playedChange = StableMaterialChange(position, played.Pv, entry.Colour);
                 var tags = new List<string>();
+                if (conversionError) tags.Add("conversion-problems");
+                if (endgameError) tags.Add("endgame-errors");
                 var balance = Material(move.FenBefore, entry.Colour);
                 if (playedChange <= -options.MinimumMaterial && bestChange is not null && bestChange > playedChange &&
                     analysis.BestScoreKind == "cp" && analysis.PlayedScoreKind == "cp" &&
@@ -77,22 +97,22 @@ public static class InsightRules
                     bestChange - playedChange >= options.MinimumMaterial && analysis.CentipawnLoss >= options.MinimumLoss)
                     tags.Add("missed-tactics");
                 // Custom setups are not labelled opening play merely because their FEN move number is small.
-                if (entry.Game.InitialFen == ChessRules.InitialFen && move.Ply <= options.OpeningFullMoves * 2) tags.Add("opening-mistakes");
-                if (clock is { } timing && timing.Remaining <= Math.Clamp(timing.Initial * .1, 10, 60)) tags.Add("time-trouble");
+                if (coreError && entry.Game.InitialFen == ChessRules.InitialFen && move.Ply <= options.OpeningFullMoves * 2) tags.Add("opening-mistakes");
+                if (coreError && clock is { } timing && timing.Remaining <= Math.Clamp(timing.Initial * .1, 10, 60)) tags.Add("time-trouble");
                 var explanation = analysis.MateTransition == "missed-forced-mate" ? "The verified engine result found a mating continuation that the played move did not preserve."
                     : analysis.MateTransition == "allowed-forced-mate" ? "The played move allowed a forced mate that the engine's alternative avoided."
                     : $"The played move lost {analysis.CentipawnLoss} centipawns compared with the checked alternative. Review the legal continuation before drawing a lesson.";
                 evidence.Add(new(entry.Game.Id, entry.Run.Id, move.Ply, entry.Colour, move.FenBefore, move.Uci, analysis.BestMove,
                     analysis.Classification, analysis.CentipawnLoss, analysis.MateTransition, tags.ToArray(), best.Pv, played.Pv,
                     bestChange, playedChange, clock?.Remaining, clock?.Spent, entry.Game.Opening ?? "Opening unknown",
-                    entry.Game.Provider, entry.Game.TimeControl, entry.Game.PlayedAt, entry.Game.Result, explanation));
+                    entry.Game.Provider, entry.Game.TimeControl, entry.Game.PlayedAt, entry.Game.Result, explanation, decision?.ConversionObjective));
             }
         }
         var clockMoves = eligible.Count(e => e.Clock);
         var coverage = eligible.Count == 0 ? 0 : (double)clockMoves / eligible.Count;
         var clockAvailable = clockMoves >= options.MinimumClockMoves && coverage >= options.MinimumClockCoverage;
         var findings = new List<WeaknessFinding>();
-        foreach (var category in new[] { "hanging-material", "missed-tactics", "opening-mistakes", "time-trouble" })
+        foreach (var category in new[] { "hanging-material", "missed-tactics", "opening-mistakes", "time-trouble", "conversion-problems", "endgame-errors" })
         {
             if (category == "time-trouble" && !clockAvailable) continue;
             var groups = category == "opening-mistakes"
@@ -100,7 +120,10 @@ public static class InsightRules
                 : evidence.Where(e => e.Tags.Contains(category)).GroupBy(_ => "All selected games");
             foreach (var group in groups)
             {
-                var sample = eligible.Where(e => category != "time-trouble" || e.Clock).Where(e => category != "opening-mistakes" ||
+                var sample = eligible.Where(e => category != "time-trouble" || e.Clock)
+                    .Where(e => category != "conversion-problems" || objective!.ConversionDecisions.Contains((e.Game.Game.Id, e.Move.Ply)))
+                    .Where(e => category != "endgame-errors" || objective!.EndgameDecisions.Contains((e.Game.Game.Id, e.Move.Ply)))
+                    .Where(e => category != "opening-mistakes" ||
                     e.Game.Game.InitialFen == ChessRules.InitialFen && e.Move.Ply <= options.OpeningFullMoves * 2 &&
                     (e.Game.Game.Opening ?? "Opening unknown") + " · " + e.Game.Colour == group.Key).ToArray();
                 var rows = group.OrderByDescending(e => e.MateTransition is "missed-forced-mate" or "allowed-forced-mate")
@@ -108,12 +131,15 @@ public static class InsightRules
                 var affected = rows.Select(e => e.GameId).Distinct().Count();
                 var eligibleGames = sample.Select(e => e.Game.Game.Id).Distinct().Count();
                 var recurring = eligibleGames >= options.MinimumGames && affected >= options.RecurringGames;
-                var label = category switch { "hanging-material" => "Material losses", "missed-tactics" => "Missed tactical opportunities", "opening-mistakes" => "Early-game evaluation losses", _ => "Mistakes ending with little time" };
+                var label = category switch { "hanging-material" => "Material losses", "missed-tactics" => "Missed tactical opportunities", "opening-mistakes" => "Early-game evaluation losses",
+                    "conversion-problems" => "Losses of a persisted checked advantage", "endgame-errors" => "Significant endgame errors", _ => "Mistakes ending with little time" };
                 var practice = category switch
                 {
                     "hanging-material" => "Before committing, check the opponent's forcing replies and whether your material stays safe through the exchanges.",
                     "missed-tactics" => "Calculate checks and captures, then test the opponent's strongest reply before choosing a move.",
                     "opening-mistakes" => "Revisit these early decisions in this opening and colour. Explain the threat before memorising a move.",
+                    "conversion-problems" => "Practise preserving a supported advantage over a few decisions. Check counterplay and simplify only when the resulting position remains favourable.",
+                    "endgame-errors" => "Revisit these exact endgame decisions, calculate forcing replies, and check the resulting king and pawn position before making a general rule.",
                     _ => "Review how much time these decisions consumed. Practise making a short threat check while reserving time for critical positions."
                 };
                 findings.Add(new(category, group.Key, $"{label} appeared in {affected} of {eligibleGames} eligible games.",
@@ -124,9 +150,9 @@ public static class InsightRules
                     rows.Any(e => e.Classification == "blunder") ? "contains-blunders" : "meaningful-losses", practice, rows));
             }
         }
-        return new(Version, eligible.Select(e => e.Game.Game.Id).Distinct().Count(), eligible.Count, evidence.Count, provisional,
+        return new(detectorVersion, eligible.Select(e => e.Game.Game.Id).Distinct().Count(), eligible.Count, evidence.Count, provisional,
             rejected, clockMoves, coverage, clockAvailable, findings.OrderByDescending(f => f.Status == "recurring-pattern")
-                .ThenByDescending(f => f.AffectedGames).ThenByDescending(f => f.MateTransitions).ThenByDescending(f => f.CentipawnLossSum).ToArray(), evidence.ToArray());
+                .ThenByDescending(f => f.AffectedGames).ThenByDescending(f => f.MateTransitions).ThenByDescending(f => f.CentipawnLossSum).ToArray(), evidence.ToArray(), objective?.Coverage());
     }
 
     private static SearchLine? ReadLine(string json, EnginePosition position, string firstMove)

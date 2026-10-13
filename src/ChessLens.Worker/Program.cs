@@ -4,6 +4,7 @@ using ChessLens.Core.Analysis;
 using ChessLens.Core.Persistence;
 using ChessLens.Core.Insights;
 using ChessLens.Core.Training;
+using ChessLens.Core.Coaching;
 using Microsoft.EntityFrameworkCore;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -21,6 +22,9 @@ builder.Services.AddOptions<AnalysisOptions>().Bind(builder.Configuration.GetSec
 builder.Services.AddSingleton<IChessEngine, EnginePool>();
 builder.Services.AddScoped<AnalysisProcessor>();
 builder.Services.AddScoped<ImportBatchProcessor>();
+builder.Services.Configure<CoachingOptions>(builder.Configuration.GetSection("Coaching"));
+builder.Services.AddSingleton<ICoachingModel, OpenAiCoachingModel>();
+builder.Services.AddScoped<CoachingProcessor>();
 builder.Services.AddScoped<InsightProcessor>();
 builder.Services.AddScoped<PuzzleProcessor>();
 builder.Services.AddHostedService<ImportWorker>();

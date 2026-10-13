@@ -1,0 +1,36 @@
+import { expect, test } from '@playwright/test';
+
+test('verified no-key coaching follows the selected decision and chosen level', async ({ page }, info) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New here? Create an account' }).click();
+  await page.getByLabel('Email', { exact: true }).fill(`coach-${info.project.name}-${Date.now()}@test.example`);
+  await page.getByLabel('Password', { exact: true }).fill('ChessLens.E2e2026!');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.getByRole('link', { name: 'Import your first games' }).click();
+  await page.getByLabel('Or paste PGN').fill(`[Event "Original no-key coaching fixture ${Date.now()}"]\n[White "Learner"]\n[Black "Opponent"]\n[Result "0-1"]\n\n1. f3 e5 2. g4 Qh4# 0-1`);
+  await page.getByLabel('Your player name').fill('Learner');
+  await page.getByRole('button', { name: 'Import games', exact: true }).click();
+  await expect(page.getByText('1 imported · 0 already in library · 0 could not be imported')).toBeVisible({ timeout: 30000 });
+  await page.getByRole('link', { name: 'Open library →' }).click(); await page.locator('.game-row').click();
+  const gameUrl = page.url();
+  await page.getByRole('button', { name: 'Analyse game', exact: true }).click();
+  await expect(page.getByText('completed · quick review · 4/4 half-moves')).toBeVisible({ timeout: 150000 });
+  await page.getByRole('button', { name: 'Move 3: g4', exact: true }).click();
+  const coach = page.getByRole('region', { name: 'Saved decision coaching' });
+  await expect(coach).toContainText('Factual coaching');
+  await expect(coach).toContainText('White played g4'); await expect(coach).toContainText('allowed a forced mate');
+  await expect(coach).toContainText('immediate threats');
+  await page.getByRole('button', { name: 'Move 1: f3', exact: true }).click();
+  await expect(coach).not.toContainText('White played g4');
+  await page.getByRole('button', { name: 'Move 3: g4', exact: true }).click();
+  await expect(coach).toContainText('White played g4');
+  await page.getByRole('link', { name: 'Settings', exact: true }).click();
+  await page.getByLabel('Coaching level').selectOption('advanced');
+  await page.getByRole('button', { name: 'Save preferences', exact: true }).click(); await expect(page.getByText('Preferences saved.')).toBeVisible();
+  await page.goto(gameUrl); await page.getByRole('button', { name: 'Move 3: g4', exact: true }).click();
+  await expect(coach).toContainText('strongest defensive reply'); await expect(coach).toContainText('advanced level');
+  await page.screenshot({ path: `test-results/coaching-${info.project.name}.png`, fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  await page.reload(); await page.getByRole('button', { name: 'Move 3: g4', exact: true }).click();
+  await expect(coach).toContainText('advanced level');
+});

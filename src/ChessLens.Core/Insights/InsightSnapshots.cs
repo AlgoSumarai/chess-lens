@@ -64,7 +64,7 @@ public sealed class InsightProcessor(LensDbContext db)
             deadline.CancelAfter(TimeSpan.FromSeconds(60));
             var filter = JsonSerializer.Deserialize<InsightFilter>(job.FilterJson)!; filter.Validate();
             var options = JsonSerializer.Deserialize<InsightOptions>(job.OptionsJson)!; options.Validate();
-            var result = await Generate(job.OwnerId, filter, options, deadline.Token);
+            var result = await Generate(job.OwnerId, filter, options, job.DetectorVersion, deadline.Token);
             await db.InsightSnapshots.Where(j => j.Id == job.Id && j.LeaseToken == token && j.State == "running")
                 .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, "completed").SetProperty(j => j.ResultJson, JsonSerializer.Serialize(result, (JsonSerializerOptions?)null))
                     .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.Version, j => j.Version + 1)
@@ -84,7 +84,7 @@ public sealed class InsightProcessor(LensDbContext db)
         return true;
     }
 
-    private async Task<InsightResult> Generate(string owner, InsightFilter filter, InsightOptions options, CancellationToken ct)
+    private async Task<InsightResult> Generate(string owner, InsightFilter filter, InsightOptions options, string detectorVersion, CancellationToken ct)
     {
         var source = db.UserGames.AsNoTracking().Where(g => g.OwnerId == owner);
         if (filter.Source is not null) source = source.Where(g => g.Game.Provider == filter.Source);
@@ -114,7 +114,7 @@ public sealed class InsightProcessor(LensDbContext db)
                 var first = group.First();
                 var games = group.Select(run => { var association = identities.Single(g => g.GameId == run.GameId); return new InsightGame(association.Game, association.PlayerColour!, run); }).ToArray();
                 return new InsightGroup(first.EngineVersion ?? "Engine version unavailable", first.Profile, first.AnalysisVersion,
-                    JsonSerializer.Deserialize<AnalysisOptions>(first.ClassificationSettingsJson ?? "{}")!, group.Select(r => r.Id).ToArray(), InsightRules.Build(games, options, ct));
+                    JsonSerializer.Deserialize<AnalysisOptions>(first.ClassificationSettingsJson ?? "{}")!, group.Select(r => r.Id).ToArray(), InsightRules.Build(games, options, ct, detectorVersion));
             }).OrderByDescending(g => g.Summary.AnalysedGames).ToArray();
         return new(filter, options, count, selected.Count, selected.Count - identities.Length, identities.Length - runs.Count, undated, count > selected.Count, groups);
     }

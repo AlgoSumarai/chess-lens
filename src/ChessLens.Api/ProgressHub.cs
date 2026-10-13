@@ -21,7 +21,8 @@ public sealed class ProgressHub(LensDbContext db) : Hub
             !await db.PositionAnalysisJobs.AnyAsync(j => j.Id == id && j.OwnerId == owner) &&
             !await db.InsightSnapshots.AnyAsync(j => j.Id == id && j.OwnerId == owner) &&
             !await db.Puzzles.AnyAsync(j => j.Id == id && j.OwnerId == owner) &&
-            !await db.ImportAnalysisBatches.AnyAsync(j => j.Id == id && j.OwnerId == owner))
+            !await db.ImportAnalysisBatches.AnyAsync(j => j.Id == id && j.OwnerId == owner) &&
+            !await db.CoachingJobs.AnyAsync(j => j.Id == id && j.OwnerId == owner))
             throw new HubException("Job not found.");
         // Subscription is owner-wide; this explicit check prevents IDs from granting additional access.
     }
@@ -64,6 +65,10 @@ public sealed class ProgressBroadcaster(IServiceScopeFactory scopes, IHubContext
                     .Select(j => new { j.Id, j.OwnerId, j.State, j.Version }).ToListAsync(stoppingToken);
                 foreach (var job in batches)
                     await hub.Clients.Group("owner:" + job.OwnerId).SendAsync("jobProgress", new { kind = "batch", job.Id, job.Version, state = job.State }, stoppingToken);
+                var coaching = await db.CoachingJobs.AsNoTracking().Where(j => j.UpdatedAt >= since)
+                    .Select(j => new { j.Id, j.OwnerId, j.State, j.Version }).ToListAsync(stoppingToken);
+                foreach (var job in coaching)
+                    await hub.Clients.Group("owner:" + job.OwnerId).SendAsync("jobProgress", new { kind = "coaching", job.Id, job.Version, state = job.State }, stoppingToken);
                 cursor = next;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }

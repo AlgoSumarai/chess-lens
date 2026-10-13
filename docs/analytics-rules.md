@@ -1,4 +1,4 @@
-# Insight rules and evidence — v1
+# Insight rules and evidence — v2
 
 Insights are deterministic associations. They do not establish why a player lost, assign a human rating or reproduce another site's accuracy score. Engine doubles in tests are labelled fixtures; user-facing snapshots use the stored analysis of imported completed games.
 
@@ -43,4 +43,20 @@ Each finding includes occurrence and eligible counts, affected games, loss assoc
 
 Snapshot requests return a job immediately. The worker uses PostgreSQL leases (three minutes), up to three attempts and idempotent terminal writes. One snapshot job may be active per owner; identical active requests reuse its ID. The quota is 20 submissions per rolling day. Cancellation and data deletion prevent an in-flight result from recreating a snapshot. No LLM or new engine search runs in the insight generator.
 
-Personalised puzzle validation and spaced review have separate [documented rules](puzzle-rules.md). Rating-aware coaching, conversion/endgame detectors and reports remain subsequent work.
+Personalised puzzle validation and spaced review have separate [documented rules](puzzle-rules.md). Rating-aware coaching is specified in [coaching-rules.md](coaching-rules.md). Conversion/endgame rules are documented below; reports remain subsequent work.
+
+## Conversion and endgame rules — v2
+
+The new detector version is `chesslens-insights-v2`; [v1 rules](analytics-rules-v1.md) remain the historical reference. Completed snapshots retain their original JSON/evidence/settings. Resumed queued v1 snapshots must execute v1 rules rather than silently adding new categories.
+
+A **conversion opportunity** is a decision after a substantial advantage has persisted through at least two consecutive decisions by the same player (default, configurable 2–5). For centipawn opportunities, each before-move best evaluation must be at least +300 cp from that player's perspective, and the previous played evaluations must also retain at least +300 cp. All contributing records must be complete, non-provisional, legally replayable from full history and consistent with one saved engine/settings/classifier group. Missing/provisional/inconsistent records or a break in the advantage reset the sequence. The current eligible decision may be the first failure. Losing the advantage means a verified classified error whose played evaluation falls to at most +100 cp or allows a forced mate. The numerator is these failed decisions; the denominator is all verified decisions at which the persistence condition held. A later recovered advantage needs a new persistence sequence. The rule reports loss of an engine-supported advantage, not failure to win a whole game or proof of the reason for a loss.
+
+Winning-mate opportunities use a separate persistence sequence: positive mate scores before each decision and positive mate scores after preceding played moves. Giving up that verified mating continuation is recorded as a mate-objective failure. Mate scores are never converted to centipawns, never enter cp-loss totals, and their opportunity counts are disclosed separately. Moving between cp and mate breaks a sequence instead of inventing an equivalence.
+
+An **eligible endgame position** has no queens and at most four total non-pawn, non-king pieces on the board by default. `EndgameMaximumNonPawnPieces` is configurable 1–8; `EndgameAllowQueens` can explicitly include queen endings under that same piece-count bound. This is a transparent material-based eligibility rule, not a claim that every chess theorist uses this definition. Standard and legal custom starting positions can qualify.
+
+The endgame denominator is the selected player's decisions in those positions with complete, non-provisional, consistent legal engine evidence. The numerator is verified classified errors losing at least 100 cp (`EndgameMinimumLoss`, configurable 50–1000) or an explicit missed/allowed forced-mate transition. Sound moves and maintained/already-facing mates are negative cases. Candidate endgame positions with absent/provisional/rejected evidence remain visible in the coverage counts; they cannot support a confident finding.
+
+V2's total verified error numerator is the **union of unique saved run/ply errors** meeting the core significant-loss rule or one of these objective-specific rules. An error tagged conversion/endgame/material/opening/timing still counts once. Each category has its own eligible decision/game denominator. New category coverage includes candidate decisions, stable evidenced decisions, eligible opportunities, missing/provisional decisions and rejected records. Conversion cp/mate opportunities are separated. Recurrence/low-sample/confidence labels and exact saved-position links remain unchanged. Changing any new setting affects only newly requested snapshots.
+
+The rule definitions preceded implementation. Positive, negative, sparse, boundary, mate-transition and frozen-version/settings fixtures now pass, with representative real Stockfish advantage-loss/endgame and stalemate checks. See [verification](verification.md) for dated evidence and remaining release gates.
