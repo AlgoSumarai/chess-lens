@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ChessLens.Core.Games;
 using ChessLens.Core.Insights;
+using ChessLens.Core.Analysis;
+using ChessLens.Core.Reports;
 using ChessLens.Core.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +35,42 @@ public sealed class InsightSnapshotTests(DatabaseFixture fixture)
         Assert.True(await new InsightProcessor(scope.ServiceProvider.GetRequiredService<LensDbContext>()).RunNext(CancellationToken.None));
     }
     private static InsightFilter Filter => new(new(2026, 8, 1, 0, 0, 0, TimeSpan.Zero), new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero));
+
+    [Fact]
+    public async Task Private_clock_coverage_is_owner_scoped_in_insights_and_frozen_in_report_inputs()
+    {
+        var (client, owner) = await Account(); using var alice = client; var (otherClient, other) = await Account(); using var bob = otherClient;
+        var input = InsightRulesTests.OpeningFixture(); var original = input.Game.RawPgn; var clocks = PgnAnnotations.Clocks(input.Game);
+        input.Game.PlayedAt = new(2026, 8, 20, 0, 0, 0, TimeSpan.Zero); input.Game.RawPgn = PgnAnnotations.Canonical(input.Game);
+        foreach (var move in input.Game.Moves) move.ClockSeconds = null;
+        var otherRun = InsightRulesTests.OpeningFixture().Run; otherRun.GameId = input.Game.Id;
+        foreach (var (run, id) in new[] { (input.Run, owner), (otherRun, other) })
+        { run.OwnerId = id; run.EngineVersion = "Fixture engine (test double)"; run.SettingsJson = "{}"; run.ClassificationSettingsJson = JsonSerializer.Serialize(new AnalysisOptions()); }
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LensDbContext>(); db.Games.Add(input.Game); db.AnalysisRuns.AddRange(input.Run, otherRun);
+            db.UserGames.AddRange(new UserGame { OwnerId = owner, GameId = input.Game.Id, PlayerColour = "white", OriginalPgn = original, ClockSecondsJson = clocks },
+                new UserGame { OwnerId = other, GameId = input.Game.Id, PlayerColour = "white", OriginalPgn = input.Game.RawPgn, ClockSecondsJson = "[null,null,null,null]" });
+            await db.SaveChangesAsync();
+        }
+        foreach (var (account, expected) in new[] { (alice, 2), (bob, 0) })
+        {
+            var response = await account.PostAsJsonAsync("/api/insights", Filter); response.EnsureSuccessStatusCode();
+            var id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid(); await Process();
+            var result = await account.GetFromJsonAsync<JsonElement>($"/api/insights/{id}");
+            Assert.Equal(expected, result.GetProperty("result").GetProperty("groups")[0].GetProperty("summary").GetProperty("clockMoves").GetInt32());
+        }
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LensDbContext>(); var capture = new ReportCapture(db);
+            var saved = await capture.Capture(owner, ReportCalendar.Progress(new(2026, 8, 20), new(2026, 8, 20)), null, new(), CancellationToken.None);
+            Assert.Equal(clocks, Assert.Single(saved.Current.Games).ClockSecondsJson);
+            await db.UserGames.Where(g => g.OwnerId == owner && g.GameId == input.Game.Id).ExecuteUpdateAsync(s => s.SetProperty(g => g.ClockSecondsJson, "[null,null,null,null]"));
+            var frozen = await ReportRules.Generate(db, owner, saved, CancellationToken.None);
+            Assert.Equal(2, Assert.Single(frozen.Groups).Summary.ClockMoves);
+        }
+        await alice.DeleteAsync("/api/account/data"); await bob.DeleteAsync("/api/account/data");
+    }
 
     [Fact]
     public async Task Snapshots_are_owner_scoped_idempotent_during_work_and_remain_frozen_after_identity_changes()

@@ -9,6 +9,18 @@ public sealed class PgnTests
     public const string Game = "[White \"Learner\"]\n[Black \"Opponent\"]\n[Result \"0-1\"]\n\n1. f3 e5 2. g4 Qh4# 0-1";
 
     [Fact]
+    public void Canonical_sources_replay_without_private_annotations_and_owner_clock_views_do_not_mutate_shared_data()
+    {
+        const string raw = "[White \"Learner\"]\n[Black \"Opponent\"]\n[Annotator \"Private author\"]\n[FEN \"7k/P7/6K1/8/8/8/8/8 w - - 0 1\"]\n1.a8=N {Private note [%clk 0:01:23]} 1/2-1/2";
+        var game = reader.Parse(raw); var canonical = PgnAnnotations.Canonical(game); var replay = reader.Parse(canonical);
+        Assert.DoesNotContain("Private", canonical); Assert.Equal(game.InitialFen, replay.InitialFen); Assert.Equal(game.Moves.Select(m => m.Uci), replay.Moves.Select(m => m.Uci));
+        var missing = PgnAnnotations.Moves(game, null); var own = PgnAnnotations.Moves(game, PgnAnnotations.Clocks(game));
+        Assert.Null(missing[0].ClockSeconds); Assert.Equal(83, own[0].ClockSeconds); own[0].ClockSeconds = 1; Assert.Equal(83, game.Moves[0].ClockSeconds);
+        Assert.Throws<ArgumentException>(() => PgnAnnotations.Moves(game, "[]")); Assert.Throws<ArgumentException>(() => PgnAnnotations.Moves(game, "[-1]"));
+        game.Provider = "lichess"; Assert.Equal(83, PgnAnnotations.Moves(game, null)[0].ClockSeconds);
+    }
+
+    [Fact]
     public void Mainline_preserves_clocks_and_skips_nested_variations()
     {
         var game = reader.Parse("[White \"A\"]\n[Black \"B\"]\n1.e4 {[%clk 0:09:58.5]} (1.d4 d5 (1... Nf6)) e5 2.Nf3 Nc6 1-0");

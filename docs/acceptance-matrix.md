@@ -6,7 +6,7 @@ Statuses: **Required**, **Implemented; revalidate**, **Verified** (with specifie
 
 | ID | Requirement / acceptance | Implementation location | Check | Evidence | Status |
 | --- | --- | --- | --- | --- | --- |
-| BASE-01 | Inspect baseline, preserve user changes and source data | Repository; docs/goal-requirements.md | git status/branch/rev-parse; migration upgrade | Clean main at 42648a5; no AGENTS.md found | Baseline inspected; upgrade open |
+| BASE-01 | Inspect baseline, preserve user changes and source data | Repository; docs/goal-requirements.md; annotation migration | git status/branch/rev-parse; restored-copy upgrade | Clean baseline; actual dump/restore/migration preserves 130 games/250 runs/1,202 evidence/14 reports and original bytes; verification 2026-10-13 | Baseline/copy upgrade verified; final release upgrade open |
 | ACC-01 | Accounts, sessions, protected routes, preferences | Api/AccountsEndpoints.cs; Core/Accounts | AccountImportTests; desktop/mobile registration | Fresh baseline pending | Implemented; revalidate |
 | ACC-02 | Identity selection, unverified profiles, demo isolation | Api/GameEndpoints.cs; DemoEndpoints.cs | Mixed/ambiguous PGNs; two isolated demo users | Fresh baseline pending | Implemented; extend profiles |
 | ACC-03 | Delete all owned data and prevent late resurrection | AccountsEndpoints.cs; cascading FKs | Deletion during every job type; cross-owner tests | Fresh baseline pending | Extend for new entities |
@@ -51,7 +51,7 @@ Statuses: **Required**, **Implemented; revalidate**, **Verified** (with specifie
 | UI-04 | Actionable loading/empty/partial/cancel/fail/retry and no-key/provider failures | All web screens | Failure journeys; retry/recovery; demo labels | Pending | Required |
 | A11Y-01 | Desktop/mobile small viewport, long data, touch/promotions/candidates/200% zoom/no overflow | web UI | Playwright content/client width + visual inspection | Pending | Required |
 | A11Y-02 | Focus/keyboard/text input/labels/status/contrast/reduced motion/non-colour classifications | web UI | Automated axe + manual keyboard/assistive inspection | Pending | Required |
-| SEC-01 | Owner isolation, CSRF, SignalR authorization on all operations | Api/Program.cs; endpoints; ProgressHub.cs; PGN associations | Two-user HTTP/SignalR; missing CSRF; private annotations | Actual cross-owner PGN comments/clocks leak reproduced; verification 2026-10-13 | Open high-severity defect; fix required |
+| SEC-01 | Owner isolation, CSRF, SignalR authorization on all operations | Api/Program.cs; endpoints; ProgressHub.cs; PgnAnnotations | Two-user HTTP/SignalR; missing CSRF; private annotations | PGN disclosure fixed: 192 backend + actual API/worker before/after + eight browser journeys; verification 2026-10-13 | Specific high defect resolved; final all-entity audit open |
 | SEC-02 | Global/per-owner provider/engine/model quotas and bounded resources | Processors/options/API | Concurrent quota tests; mixed-workload checks | Pending | Required |
 | REL-01 | No starvation across imports/review/insights/puzzle/practice/reports | Worker scheduling | Mixed queue workload progress evidence | Pending | Required |
 | REL-02 | OS/process kill/restart, repeated delivery/lease exhaustion/engine failure | Worker/engine/scheduler | Isolated actual process experiments; persisted state/leak checks | Pending | Required |
@@ -61,7 +61,7 @@ Statuses: **Required**, **Implemented; revalidate**, **Verified** (with specifie
 | OPS-02 | Reproducible CI; official dependency/security checks, justified compatible updates | CI; locks; dependencies.md | CI commands + official advisory/audit results | Pending | Required |
 | OPS-03 | x86-64 and ARM64 exact engine packaging/builds verified; honest matrix | Dockerfile/engine scripts | Both binaries/UCI/container checks or gate open | Pending | Required |
 | OPS-04 | HTTPS/trusted proxy/secure cookies/origin/config/persistent keys/secrets examples | Production Compose/API/nginx/docs | Local HTTPS/proxy cookie/origin/readiness validation | Pending | Required |
-| OPS-05 | Backup/real restore isolated database and verified records | Backup/restore scripts/docs | Dump/restore + data integrity checks | Pending | Required |
+| OPS-05 | Backup/real restore isolated database and verified records | Backup/restore scripts/docs | Dump/restore + data integrity checks | Actual existing validation dump/isolated restore/upgrade verified; docs/verification.md | Restore evidence acquired; operational scripts/final release check required |
 | LIC-01 | Applicable licence texts; board/opening provenance; exact Stockfish source/build materials | THIRD_PARTY_NOTICES; licences; engine archive | Inventory licence verification; source/binary hashes | Pending | Required |
 | OPS-06 | Release image digests and reproducible local release | Release scripts/docs | Built images/digests; local release startup | Pending | Required |
 | BEN-01 | Hardware/settings/profiles/games/plies/concurrency/time/peak CPU/memory/responsiveness | Benchmark script/report | Measured repeatable workload; disclosed limits | Pending | Required |

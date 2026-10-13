@@ -11,7 +11,7 @@ namespace ChessLens.Core.Reports;
 
 public static class ReportRules
 {
-    public const string Version = "chesslens-reports-v1";
+    public const string Version = "chesslens-reports-v2";
     private static readonly string[] Categories = ["hanging-material", "missed-tactics", "opening-mistakes", "time-trouble", "conversion-problems", "endgame-errors"];
 
     public static async Task<ReportResult> Generate(LensDbContext db, string owner, ReportInputs inputs, CancellationToken ct)
@@ -24,7 +24,7 @@ public static class ReportRules
         var games = await db.Games.AsNoTracking().Where(g => ids.Contains(g.Id)).Select(g => new SourceGame
         {
             Id = g.Id, Fingerprint = g.Fingerprint, White = "", Black = "", RawPgn = "", HeadersJson = "{}", Result = g.Result,
-            InitialFen = g.InitialFen, Moves = g.Moves.ToList()
+            InitialFen = g.InitialFen, Provider = g.Provider, Moves = g.Moves.ToList()
         }).ToDictionaryAsync(g => g.Id, ct);
         var runs = await db.AnalysisRuns.AsNoTracking().Where(r => r.OwnerId == owner && runIds.Contains(r.Id) && r.State == "completed")
             .Include(r => r.Moves).ToDictionaryAsync(r => r.Id, ct);
@@ -84,7 +84,7 @@ public static class ReportRules
             {
                 var stored = games[reference.GameId];
                 var source = new SourceGame { Id = stored.Id, Fingerprint = stored.Fingerprint, White = "", Black = "", RawPgn = "", HeadersJson = "{}",
-                    InitialFen = stored.InitialFen, Moves = stored.Moves, Result = reference.Result, Provider = reference.Source, PlayedAt = reference.PlayedAt,
+                    InitialFen = stored.InitialFen, Moves = PgnAnnotations.Moves(stored, reference.ClockSecondsJson), Result = reference.Result, Provider = reference.Source, PlayedAt = reference.PlayedAt,
                     Opening = reference.Opening, TimeControl = reference.TimeControl };
                 return new InsightGame(source, reference.Colour!, runs[reference.Analysis!.RunId]);
             }).ToArray();

@@ -27,6 +27,8 @@ Material counts use transparent heuristic weights: pawn 100, knight/bishop 300, 
 
 PGN clock annotations are treated as post-move clocks including increment. Pre-increment remaining time is `max(0, recorded clock - increment)`. Time spent is `previous clock + increment - recorded clock`, using the same player's preceding move. Initial base time is available only for a standard starting position. A custom setup needs an earlier recorded clock for that player.
 
+Uploaded PGN clocks come only from the selected owner's first supplied file, even when another owner shares the legal game. Public provider clocks remain immutable public source metadata. Older unattributed PGN clocks are missing until restored by that owner's reimport; they are never borrowed from a different uploader. See [annotation isolation](pgn-annotation-isolation.md). Completed insight history remains unchanged; new report v2 captures freeze the owner clock snapshot.
+
 Absent clocks, unsupported multi-period/delay controls, non-finite values and inconsistent increases beyond increment are unavailable. A one-second rounding tolerance is allowed; it never creates negative time spent. Missing values are not zeroes.
 
 Clock findings require at least 20 usable analysed moves and at least 50% timing coverage by default. Otherwise the interface explicitly reports time-trouble findings unavailable, even if isolated low-clock errors exist.

@@ -48,6 +48,9 @@ public static class ReportEndpoints
         {
             var report = await db.ReportSnapshots.AsNoTracking().SingleOrDefaultAsync(r => r.Id == id && r.OwnerId == user.Owner(), ct);
             if (report is null) return Results.NotFound();
+            if (report.State is "completed" or "queued" or "running") return Results.Accepted($"/api/reports/{report.Id}", View(report));
+            if (report.RulesVersion != ReportRules.Version)
+                return Results.Problem(statusCode: 409, title: "Historical report rules", detail: "Keep this saved history and choose a fresh selection under the current report rules.");
             try
             {
                 var inputs = JsonSerializer.Deserialize<ReportInputs>(report.InputsJson)!;

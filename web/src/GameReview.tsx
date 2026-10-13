@@ -252,7 +252,8 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
       </div>
     </div>
     <details className="source-pgn">
-      <summary>Original PGN</summary>
+      <summary>{game.annotationState === 'unattributed' ? 'Saved game PGN' : 'Original PGN'}</summary>
+      {game.annotationState === 'unattributed' && <p>Older annotations could not be attributed to your workspace. Reimport your original PGN to restore your comments and clocks; this saved game and its reviews stay available.</p>}
       <pre>{game.rawPgn}</pre>
     </details>
   </>;

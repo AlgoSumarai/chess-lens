@@ -70,6 +70,7 @@ public static class AccountsEndpoints
         await db.ReportSchedules.Where(r => r.OwnerId == owner).ExecuteDeleteAsync(ct);
         await db.ImportJobs.Where(j => j.OwnerId == owner).ExecuteDeleteAsync(ct);
         await db.InsightSnapshots.Where(j => j.OwnerId == owner).ExecuteDeleteAsync(ct);
+        await db.LegacyPgnAnnotations.Where(a => db.UserGames.Any(g => g.OwnerId == owner && g.GameId == a.GameId)).ExecuteDeleteAsync(ct);
         await db.UserGames.Where(g => g.OwnerId == owner).ExecuteDeleteAsync(ct);
         await db.ImportedProfiles.Where(p => p.OwnerId == owner).ExecuteDeleteAsync(ct);
         await db.Games.Where(g => !db.UserGames.Any(ug => ug.GameId == g.Id)).ExecuteDeleteAsync(ct);

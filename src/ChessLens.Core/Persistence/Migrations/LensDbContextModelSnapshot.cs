@@ -622,6 +622,20 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.ToTable("Moves");
                 });
 
+            modelBuilder.Entity("ChessLens.Core.Games.LegacyPgnAnnotation", b =>
+                {
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RawPgn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("GameId");
+
+                    b.ToTable("LegacyPgnAnnotations");
+                });
+
             modelBuilder.Entity("ChessLens.Core.Games.SourceGame", b =>
                 {
                     b.Property<Guid>("Id")
@@ -726,6 +740,12 @@ namespace ChessLens.Core.Persistence.Migrations
 
                     b.Property<DateTimeOffset>("AddedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClockSecondsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OriginalPgn")
+                        .HasColumnType("text");
 
                     b.Property<string>("PlayerColour")
                         .HasColumnType("text");
@@ -1619,6 +1639,15 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.HasOne("ChessLens.Core.Games.SourceGame", null)
                         .WithMany("Moves")
                         .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Games.LegacyPgnAnnotation", b =>
+                {
+                    b.HasOne("ChessLens.Core.Games.SourceGame", null)
+                        .WithOne()
+                        .HasForeignKey("ChessLens.Core.Games.LegacyPgnAnnotation", "GameId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

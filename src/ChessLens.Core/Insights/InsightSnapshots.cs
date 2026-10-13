@@ -98,10 +98,11 @@ public sealed class InsightProcessor(LensDbContext db)
         if (await selection.SumAsync(g => g.Game.Moves.Count, ct) > 20_000) throw new ArgumentException("Choose fewer games: an insight snapshot is limited to 20,000 source half-moves.");
         // Raw PGN/comments are not needed for rules-based analytics and can be
         // megabytes per game. Project only the evidence inputs within the cap.
-        var selected = await selection.Select(g => new UserGame { OwnerId = g.OwnerId, GameId = g.GameId, PlayerColour = g.PlayerColour,
+        var selected = await selection.Select(g => new UserGame { OwnerId = g.OwnerId, GameId = g.GameId, PlayerColour = g.PlayerColour, ClockSecondsJson = g.ClockSecondsJson,
             Game = new SourceGame { Id = g.GameId, Fingerprint = g.Game.Fingerprint, White = g.Game.White, Black = g.Game.Black,
                 Result = g.Game.Result, Provider = g.Game.Provider, InitialFen = g.Game.InitialFen, PlayedAt = g.Game.PlayedAt,
                 Opening = g.Game.Opening, TimeControl = g.Game.TimeControl, RawPgn = "", HeadersJson = "{}", Moves = g.Game.Moves.ToList() } }).ToListAsync(ct);
+        foreach (var association in selected) association.Game.Moves = PgnAnnotations.Moves(association.Game, association.ClockSecondsJson);
         var identities = selected.Where(g => g.PlayerColour is "white" or "black").ToArray();
         var ids = identities.Select(g => g.GameId).ToArray();
         var latest = await db.AnalysisRuns.Where(r => r.OwnerId == owner && ids.Contains(r.GameId) && r.State == "completed")

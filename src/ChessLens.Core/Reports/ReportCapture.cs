@@ -86,7 +86,7 @@ public sealed class ReportCapture(LensDbContext db)
             completed.Where(r => r.GameId == g.GameId).OrderByDescending(r => r.UpdatedAt).ThenByDescending(r => r.Id)
                 .Select(r => new ReportAnalysisReference(r.Id, r.EngineVersion ?? "Engine version unavailable", r.Profile, r.AnalysisVersion,
                     r.SettingsJson ?? "{}", r.ClassificationSettingsJson ?? JsonSerializer.Serialize(new AnalysisOptions(), (JsonSerializerOptions?)null), r.UpdatedAt,
-                    r.EngineVersion != null && r.SettingsJson != null && r.ClassificationSettingsJson != null)).FirstOrDefault()));
+                    r.EngineVersion != null && r.SettingsJson != null && r.ClassificationSettingsJson != null)).FirstOrDefault(), g.ClockSecondsJson));
         var selected = await projection.ToArrayAsync(ct);
         // Training dates describe when an attempt finished, independently of the game's played-at date.
         var trainingGames = Filter(db.UserGames.AsNoTracking().Where(g => g.OwnerId == owner), filter, applyColour: false).Select(g => g.GameId);

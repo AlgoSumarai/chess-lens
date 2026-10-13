@@ -124,15 +124,35 @@ public sealed class ReportPipelineTests(DatabaseFixture fixture)
         (await alice.PostAsync($"/api/reports/{id}/cancel", null)).EnsureSuccessStatusCode();
         await using (var scope = fixture.Services.CreateAsyncScope()) Assert.False(await new ReportProcessor(scope.ServiceProvider.GetRequiredService<LensDbContext>()).RunNext(CancellationToken.None));
         Assert.Equal("cancelled", (await Get(alice, id)).GetProperty("state").GetString());
-        await Post(alice, $"/api/reports/{id}/retry", new { });
+        var retried = await Post(alice, $"/api/reports/{id}/retry", new { });
+        Assert.Equal(id, retried.GetProperty("id").GetGuid()); Assert.Equal("queued", retried.GetProperty("state").GetString());
         await using (var scope = fixture.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<LensDbContext>();
-            await db.ReportSnapshots.Where(r => r.Id == id).ExecuteUpdateAsync(s => s.SetProperty(r => r.State, "running").SetProperty(r => r.Attempts, 1).SetProperty(r => r.LeaseUntil, DateTimeOffset.UtcNow.AddSeconds(-1)));
+            await db.ReportSnapshots.Where(r => r.Id == id).ExecuteUpdateAsync(s => s.SetProperty(r => r.State, "running").SetProperty(r => r.Attempts, 1).SetProperty(r => r.LeaseUntil, DateTimeOffset.UtcNow.AddMinutes(-1)));
         }
         await Tick(); Assert.Equal("completed", (await Get(alice, id)).GetProperty("state").GetString());
         alice.DefaultRequestHeaders.Remove("X-CSRF-TOKEN"); Assert.Equal(HttpStatusCode.BadRequest, (await alice.PostAsync($"/api/reports/{id}/retry", null)).StatusCode);
         await using var final = fixture.Services.CreateAsyncScope(); await final.ServiceProvider.GetRequiredService<LensDbContext>().ReportSnapshots.Where(r => r.Id == id).ExecuteDeleteAsync();
+    }
+
+    [Fact]
+    public async Task Retry_does_not_reinterpret_a_completed_or_unfinished_older_report_under_new_rules()
+    {
+        var (client, owner) = await Account(); using var alice = client; var period = Week(); await Seed(owner, period);
+        var queued = await Post(alice, "/api/reports/weekly", new { weekFrom = period.FromDate }); var id = queued.GetProperty("id").GetGuid(); await Tick();
+        var original = (await Get(alice, id)).GetProperty("result").GetRawText();
+        await using (var scope = fixture.Services.CreateAsyncScope())
+            await scope.ServiceProvider.GetRequiredService<LensDbContext>().ReportSnapshots.Where(r => r.Id == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.RulesVersion, "chesslens-reports-v1"));
+        Assert.Equal(id, (await Post(alice, $"/api/reports/{id}/retry", new { })).GetProperty("id").GetGuid());
+        Assert.Equal(original, (await Get(alice, id)).GetProperty("result").GetRawText());
+        await using (var scope = fixture.Services.CreateAsyncScope())
+            await scope.ServiceProvider.GetRequiredService<LensDbContext>().ReportSnapshots.Where(r => r.Id == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.State, "failed").SetProperty(r => r.ResultJson, (string?)null));
+        Assert.Equal(HttpStatusCode.Conflict, (await alice.PostAsJsonAsync($"/api/reports/{id}/retry", new { })).StatusCode);
+        Assert.Equal(1, (await alice.GetFromJsonAsync<JsonElement>("/api/reports?kind=weekly")).GetProperty("total").GetInt32());
+        await alice.DeleteAsync("/api/account/data");
     }
 
     [Fact]

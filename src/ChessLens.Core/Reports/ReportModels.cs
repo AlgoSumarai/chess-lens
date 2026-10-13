@@ -50,7 +50,7 @@ public sealed class ReportSchedule
 public sealed record ReportAnalysisReference(Guid RunId, string Engine, string Profile, string AnalysisVersion, string SettingsJson,
     string ClassificationSettingsJson, DateTimeOffset CompletedAt, bool SettingsKnown);
 public sealed record ReportGameReference(Guid GameId, string? Colour, string Source, string? RatingPool, bool? Rated, string? Opening,
-    string? TimeControl, string TimeControlGroup, string Result, DateTimeOffset? PlayedAt, int? Rating, int Plies, ReportAnalysisReference? Analysis);
+    string? TimeControl, string TimeControlGroup, string Result, DateTimeOffset? PlayedAt, int? Rating, int Plies, ReportAnalysisReference? Analysis, string? ClockSecondsJson = null);
 public sealed record TrainingObservation(string Kind, Guid Id, Guid GameId, string Outcome, bool Assisted, string Version, string Objective, DateTimeOffset FinishedAt);
 public sealed record ReportSelection(int MatchingGames, int UndatedGamesExcluded, ReportGameReference[] Games, int TrainingCount,
     bool TrainingCapped, TrainingObservation[] Training, Guid[] DuePuzzles);

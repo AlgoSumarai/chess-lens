@@ -1,6 +1,6 @@
-# Reports and comparable progress — v1
+# Reports and comparable progress — v2
 
-Implemented rules version: `chesslens-reports-v1`, using the captured detector version/options. Verification is recorded separately in [the ledger](verification.md).
+Implemented rules version: `chesslens-reports-v2`, using the captured detector version/options and owner-specific PGN clocks. [V1](reports-progress-rules-v1.md) remains the historical contract. Completed v1 results stay immutable; unfinished v1 jobs require a fresh selection instead of reinterpretation. Verification is recorded separately in [the ledger](verification.md).
 
 ## Calendar and activity
 
@@ -13,6 +13,8 @@ The scheduler discovers completed weeks with new review activity, in bounded res
 ## Frozen evidence and bounds
 
 Capture source-game identities/metadata, selected run IDs, their engine/settings/analysis/classification versions, detector options/version, training evidence/cutoff and the original date interval. Build against those exact immutable source/run references, never “latest” again after queuing. Completed results store their own coverage, findings, representative saved run/ply links and practice plan. Reanalysis cannot replace historical evidence. Imported-data deletion removes report snapshots and active work; late workers cannot recreate them.
+
+PGN clock snapshots belong to the uploader and are frozen in each captured game reference. Public provider clocks remain immutable source metadata. Unattributed older PGN clocks are missing, never borrowed from another owner; see [annotation isolation and migration](pgn-annotation-isolation.md).
 
 A report/progress snapshot selects 1–200 games **per period** (default 50) and at most 20,000 source half-moves across current and prior periods, with a 60-second processing deadline. If the combined evidence exceeds the limit, admit games alternately from each period's recent ordering, stopping that period at its first game that does not fit. Keep recent prefixes and matching totals; disclose the cap and suppress comparisons. Large weeks can still generate a useful bounded report. Capture has a separate 20-second HTTP deadline, two-megabyte input/output bounds, and no engine/model request during aggregation.
 

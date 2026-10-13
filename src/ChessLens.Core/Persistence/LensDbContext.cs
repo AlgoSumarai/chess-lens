@@ -16,6 +16,7 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
     public DbSet<SourceGame> Games => Set<SourceGame>();
     public DbSet<GameMove> Moves => Set<GameMove>();
     public DbSet<UserGame> UserGames => Set<UserGame>();
+    public DbSet<LegacyPgnAnnotation> LegacyPgnAnnotations => Set<LegacyPgnAnnotation>();
     public DbSet<ImportedProfile> ImportedProfiles => Set<ImportedProfile>();
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
     public DbSet<ImportJobGame> ImportJobGames => Set<ImportJobGame>();
@@ -51,6 +52,11 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
             e.HasMany(g => g.Moves).WithOne().HasForeignKey(m => m.GameId).OnDelete(DeleteBehavior.Cascade);
         });
         b.Entity<GameMove>().HasKey(m => new { m.GameId, m.Ply });
+        b.Entity<LegacyPgnAnnotation>(e =>
+        {
+            e.HasKey(a => a.GameId);
+            e.HasOne<SourceGame>().WithOne().HasForeignKey<LegacyPgnAnnotation>(a => a.GameId).OnDelete(DeleteBehavior.Cascade);
+        });
         b.Entity<UserGame>(e =>
         {
             e.HasKey(g => new { g.OwnerId, g.GameId });

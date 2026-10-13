@@ -46,5 +46,14 @@ public sealed class UserGame
     public Guid GameId { get; set; }
     public SourceGame Game { get; set; } = null!;
     public string? PlayerColour { get; set; }
+    public string? OriginalPgn { get; set; }
+    public string? ClockSecondsJson { get; set; }
     public DateTimeOffset AddedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>Restricted preservation of pre-isolation uploads whose creator cannot be established.</summary>
+public sealed class LegacyPgnAnnotation
+{
+    public Guid GameId { get; set; }
+    public required string RawPgn { get; set; }
 }

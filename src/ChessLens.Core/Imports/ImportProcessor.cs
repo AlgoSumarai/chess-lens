@@ -40,6 +40,7 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
             var payload = JsonSerializer.Deserialize<PgnImportRequest>(initial.PayloadJson) ?? throw new ArgumentException("Missing import payload.");
             var batch = reader.Split(payload.Pgn, payload.MaxGames);
             if (batch.Count == 0) throw new ArgumentException("No games were found in this upload.");
+            var restoredAnnotations = false;
             while (true)
             {
                 db.ChangeTracker.Clear();
@@ -47,6 +48,19 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
                 var job = await db.ImportJobs.FromSqlInterpolated($"SELECT * FROM \"ImportJobs\" WHERE \"Id\" = {id} FOR UPDATE").SingleOrDefaultAsync(ct);
                 if (job is null || job.LeaseToken != token || job.State != "running") return true;
                 job.Total = batch.Count;
+                if (!restoredAnnotations && job.Processed > 0)
+                {
+                    // A pre-upgrade partial job still holds this owner's exact upload. Restore its committed prefix.
+                    foreach (var raw in batch.Take(job.Processed))
+                    {
+                        SourceGame recovered;
+                        try { recovered = reader.Parse(raw); } catch (ArgumentException) { continue; }
+                        var own = await db.UserGames.SingleOrDefaultAsync(g => g.OwnerId == job.OwnerId && g.Game.Fingerprint == recovered.Fingerprint, ct);
+                        if (own is not null && own.OriginalPgn is null)
+                        { own.OriginalPgn = recovered.RawPgn; own.ClockSecondsJson = PgnAnnotations.Clocks(recovered); }
+                    }
+                    restoredAnnotations = true;
+                }
                 if (job.CancelRequested || job.Processed >= batch.Count)
                 {
                     job.State = job.CancelRequested ? "cancelled" : "completed";
