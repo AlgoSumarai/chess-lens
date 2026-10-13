@@ -5,6 +5,7 @@ using ChessLens.Core.Persistence;
 using ChessLens.Core.Insights;
 using ChessLens.Core.Training;
 using ChessLens.Core.Coaching;
+using ChessLens.Core.Reports;
 using Microsoft.EntityFrameworkCore;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -30,6 +31,9 @@ builder.Services.AddScoped<PuzzleProcessor>();
 builder.Services.AddHostedService<ImportWorker>();
 builder.Services.AddScoped<PositionAnalysisProcessor>();
 builder.Services.AddScoped<PracticeProcessor>();
+builder.Services.AddScoped<ReportProcessor>();
+builder.Services.AddScoped<ReportScheduler>();
+builder.Services.Configure<InsightOptions>(builder.Configuration.GetSection("Insights"));
 builder.Services.AddHostedService<PositionWorker>();
 
 var host = builder.Build();

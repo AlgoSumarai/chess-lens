@@ -5,6 +5,7 @@ using ChessLens.Core.Imports;
 using ChessLens.Core.Insights;
 using ChessLens.Core.Training;
 using ChessLens.Core.Coaching;
+using ChessLens.Core.Reports;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,10 +34,14 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
     public DbSet<PracticeAttempt> PracticeAttempts => Set<PracticeAttempt>();
     public DbSet<PracticeJob> PracticeJobs => Set<PracticeJob>();
     public DbSet<ResourceUsage> ResourceUsages => Set<ResourceUsage>();
+    public DbSet<ReportSnapshot> ReportSnapshots => Set<ReportSnapshot>();
+    public DbSet<ReportSchedule> ReportSchedules => Set<ReportSchedule>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+        b.Entity<AppUser>().Property(u => u.DataVersion).IsConcurrencyToken();
+        b.HasDbFunction(typeof(TimeControlGroups).GetMethod(nameof(TimeControlGroups.SqlGroup))!).HasName("chesslens_time_control_group_v1");
         b.Entity<SourceGame>(e =>
         {
             e.HasIndex(g => g.Fingerprint).IsUnique();
@@ -168,6 +173,22 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
         {
             e.HasOne<AppUser>().WithMany().HasForeignKey(u => u.OwnerId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(u => new { u.OwnerId, u.Kind, u.CreatedAt });
+        });
+        b.Entity<ReportSnapshot>(e =>
+        {
+            e.HasOne<AppUser>().WithMany().HasForeignKey(r => r.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => new { r.OwnerId, r.CacheIdentity }).IsUnique();
+            e.HasIndex(r => new { r.OwnerId, r.ScopeIdentity, r.Revision }).IsUnique();
+            e.HasIndex(r => new { r.State, r.LeaseUntil });
+            e.HasIndex(r => new { r.OwnerId, r.CreatedAt });
+            e.Property(r => r.CacheIdentity).HasMaxLength(64);
+            e.Property(r => r.ScopeIdentity).HasMaxLength(64);
+        });
+        b.Entity<ReportSchedule>(e =>
+        {
+            e.HasKey(s => s.OwnerId);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(s => s.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(s => new { s.NextCheckAt, s.LeaseUntil });
         });
     }
 }

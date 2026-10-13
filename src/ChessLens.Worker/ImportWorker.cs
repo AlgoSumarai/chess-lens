@@ -3,6 +3,7 @@ using ChessLens.Core.Analysis;
 using ChessLens.Core.Insights;
 using ChessLens.Core.Training;
 using ChessLens.Core.Coaching;
+using ChessLens.Core.Reports;
 
 namespace ChessLens.Worker;
 
@@ -24,7 +25,9 @@ public sealed class ImportWorker(IServiceScopeFactory scopes, ILogger<ImportWork
                     scope.ServiceProvider.GetRequiredService<AnalysisProcessor>().RunNext,
                     scope.ServiceProvider.GetRequiredService<InsightProcessor>().RunNext,
                     scope.ServiceProvider.GetRequiredService<PuzzleProcessor>().RunNext,
-                    scope.ServiceProvider.GetRequiredService<CoachingProcessor>().RunNext
+                    scope.ServiceProvider.GetRequiredService<CoachingProcessor>().RunNext,
+                    scope.ServiceProvider.GetRequiredService<ReportProcessor>().RunNext,
+                    scope.ServiceProvider.GetRequiredService<ReportScheduler>().RunNext
                 ];
                 var processed = false;
                 for (var i = 0; i < lanes.Length; i++)

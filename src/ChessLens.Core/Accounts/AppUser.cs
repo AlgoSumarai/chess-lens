@@ -9,6 +9,7 @@ public sealed class AppUser : IdentityUser
     public string PreferredTimeControls { get; set; } = "rapid";
     public bool IsDemo { get; set; }
     public bool UseModelCoaching { get; set; }
+    public long DataVersion { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

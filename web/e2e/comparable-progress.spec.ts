@@ -1,0 +1,38 @@
+import { expect, test } from '@playwright/test';
+
+test('original artificial game samples with real deep reviews produce a supported descriptive comparison', async ({ page }, info) => {
+  test.setTimeout(300000);
+  await page.goto('/'); await page.getByRole('button', { name: 'New here? Create an account' }).click();
+  await page.getByLabel('Email', { exact: true }).fill(`comparable-fixture-${info.project.name}-${Date.now()}@test.example`);
+  await page.getByLabel('Password', { exact: true }).fill('ChessLens.E2e2026!'); await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'A little reflection. A better next game.' })).toBeVisible({ timeout: 15000 });
+  await page.getByRole('link', { name: 'Import your first games', exact: true }).click();
+  const today = new Date().toISOString().slice(0, 10); const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10); const stamp = Date.now();
+  // These are explicit artificial samples, not evidence that a real player's performance improved.
+  const pgn = Array.from({ length: 10 }, (_, index) => `[Event "Original comparable fixture ${stamp}-${index}"]\n[Date "${(index < 5 ? yesterday : today).replaceAll('-', '.')}"]\n[White "Opponent"]\n[Black "Learner"]\n[TimeControl "300+0"]\n[Result "0-1"]\n${index < 5 ? '1.f3 e5 2.g4 Nc6 3.a3 Qh4#' : '1.f3 e5 2.g4 Qh4#'} 0-1`).join('\n\n');
+  await page.getByLabel('Or paste PGN').fill(pgn); await page.getByLabel('Your player name').fill('Learner');
+  await page.getByRole('button', { name: 'Import games', exact: true }).click();
+  await expect(page.getByText('10 imported · 0 already in library · 0 could not be imported')).toBeVisible({ timeout: 30000 });
+  await page.getByRole('button', { name: 'Review this batch', exact: true }).click();
+  await page.getByLabel('Games to review').fill('10'); await page.getByLabel('Review depth').selectOption('deep');
+  await page.getByRole('button', { name: 'Analyse selected games', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '10/10 games reviewed', exact: true })).toBeVisible({ timeout: 180000 });
+  await page.getByRole('link', { name: 'Progress', exact: true }).click();
+  await page.getByLabel('Games played from (UTC)').fill(today); await page.getByLabel('Through, inclusive (UTC)').fill(today);
+  await page.getByLabel('Source').selectOption('pgn'); await page.getByLabel('Playing as').selectOption('black'); await page.getByLabel('Time-control group').selectOption('blitz');
+  await page.getByLabel('Only unknown openings').check(); await page.getByRole('button', { name: 'View saved progress', exact: true }).click();
+  await expect(page.getByRole('status', { name: 'Report status' })).toHaveText('Saved report ready.', { timeout: 30000 });
+  await expect(page.getByRole('heading', { name: 'An observed change', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Verified error rate', { exact: true })).toHaveText('0/10 · 0.0%');
+  await expect(page.getByText('Previous: 5/15 · 33.3% · Current: 0/10 · 0.0%.')).toBeVisible();
+  await expect(page.getByRole('img', { name: /Verified error rates, previous 33.3 percent, current 0.0 percent/ })).toBeVisible();
+  await expect(page.getByText(/Descriptive difference between compatible decision samples/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No supported weakness in this group.', exact: true })).toBeVisible();
+  const id = page.url().split('/reports/')[1]; const saved = (await (await page.request.get(`/api/reports/${id}`)).json()).result;
+  expect(saved.results).toEqual({ wins: 5, draws: 0, losses: 0, unknown: 0 });
+  expect(saved.groups[0].coverage.stableDecisions).toBe(10); expect(saved.groups[0].comparison.previousEligible).toBe(15);
+  await page.screenshot({ path: `test-results/comparable-original-fixture-${info.project.name}.png`, fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
+  await page.reload(); await expect(page.getByRole('heading', { name: 'An observed change', exact: true })).toBeVisible();
+  expect((await (await page.request.get(`/api/reports/${id}`)).json()).result).toEqual(saved);
+});

@@ -10,6 +10,7 @@ public sealed class Puzzle
     public string ValidationVersion { get; set; } = PuzzleValidator.Version;
     public string State { get; set; } = "queued";
     public string? SolutionJson { get; set; }
+    public string? Objective { get; set; }
     public string? Error { get; set; }
     public int Attempts { get; set; }
     public string? LeaseToken { get; set; }

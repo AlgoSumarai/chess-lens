@@ -27,3 +27,24 @@ progress{width:100%;accent-color:var(--accent)}
 .practice-grade { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: .8rem; }
 .practice-grade p, .attempt-list a { overflow-wrap: anywhere; }
 .attempt-list { display: grid; gap: .8rem; padding-left: 1.2rem; }
+.report-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end}
+.report-list{display:grid;gap:1.2rem;margin-top:1.5rem}
+.report-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem;margin:1.4rem 0}
+.report-metrics .panel{min-width:0}
+.metric-number{display:block;font-size:1.65rem;font-weight:600;line-height:1.4;margin:.65rem 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.report-notes{margin:1.2rem 0;padding:.5rem 1rem;border:1px solid var(--line);border-radius:7px}
+.report-notes p{font-size:.875rem;overflow-wrap:anywhere}
+.report-table{border-collapse:collapse;width:100%;font-size:.875rem;text-align:left}
+.report-table th,.report-table td{padding:.8rem .65rem;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.report-table th{color:#d8e0e8}.report-table td{color:var(--muted)}
+.table-scroll{max-width:100%;overflow-x:auto;margin:1rem 0}
+.comparison-block{border-top:1px solid var(--line);margin-top:1.5rem;padding-top:1.2rem}
+.comparison-block p{margin:.6rem 0}
+.rate-chart{display:block;width:100%;max-width:420px;margin:1.3rem 0;color:var(--muted)}
+.rate-chart text{fill:currentColor;font-size:14px}.chart-track{fill:#0e1924}.chart-current{fill:var(--accent)}.chart-previous{fill:#9cbfee}
+.training-summaries{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem;margin-top:1.2rem}
+.training-summaries>div{border-top:1px solid var(--line);padding-top:1rem}.training-summaries p{margin:.6rem 0}.training-summaries h3{overflow-wrap:anywhere}
+.dashboard-reflection{margin-top:1.5rem}
+.saved-report>.panel{margin:1.2rem 0}.saved-report small{display:block}.saved-report h3{margin-top:1rem}.saved-report .eyebrow{overflow-wrap:anywhere}
+@media(max-width:850px){.report-form{grid-template-columns:repeat(2,minmax(0,1fr))}.report-form button{grid-column:1/-1;justify-self:start}}
+@media(max-width:560px){.report-form,.report-metrics,.training-summaries{grid-template-columns:minmax(0,1fr)}.report-table th,.report-table td{padding:.7rem .4rem}.metric-number{font-size:1.4rem}.report-list .section-title{flex-wrap:wrap}}

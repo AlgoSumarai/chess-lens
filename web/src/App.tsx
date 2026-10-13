@@ -6,6 +6,7 @@ import { Weaknesses, type InsightSnapshot } from './Weaknesses';
 import { PuzzleLibrary, PuzzlePage, PuzzleAttemptPage } from './Puzzles';
 import { ImportPage, AnalysisBatchPage } from './Imports';
 import { PracticeLibrary, PracticePage } from './Practice';
+import { ReportsLibrary, ProgressPage, ReportPage } from './Reports';
 
 export function ErrorNotice({ message, retry }: { message: string; retry?: () => void }) {
   return message ? <div className="error" role="alert">{message}{retry && <button onClick={retry}>Retry</button>}</div> : null;
@@ -56,6 +57,8 @@ export function App() {
   links.splice(2, 0, ['/weaknesses', 'Weaknesses', '◎']);
   links.splice(3, 0, ['/puzzles', 'Puzzle practice', '♙']);
   links.splice(4, 0, ['/practice', 'Mistake practice', '↺']);
+  links.splice(5, 0, ['/reports', 'Weekly reports', '▤']);
+  links.splice(6, 0, ['/progress', 'Progress', '↗']);
 
   return <div className="shell">
     <a className="skip" href="#main" onClick={event => { 
@@ -89,6 +92,9 @@ export function App() {
           routePath.startsWith('/analysis-batches/') ? <AnalysisBatchPage id={routePath.split('/')[2]} key={route} /> :
           routePath === '/weaknesses' ? <Weaknesses snapshotId={routeQuery.get('snapshot') ?? undefined} key={route} /> :
           route === '/practice' ? <PracticeLibrary /> :
+          route === '/reports' ? <ReportsLibrary /> :
+          route === '/progress' ? <ProgressPage /> :
+          routePath.startsWith('/reports/') ? <ReportPage id={routePath.split('/')[2]} key={route} /> :
           routePath.startsWith('/practice/') ? <PracticePage id={routePath.split('/')[2]} attemptId={routeQuery.get('attempt') ?? undefined} key={route} /> :
           route === '/puzzles' ? <PuzzleLibrary /> : 
           routePath.startsWith('/puzzles/attempts/') ? <PuzzleAttemptPage id={routePath.split('/')[3]} key={route} /> : 
@@ -167,6 +173,10 @@ function Dashboard() {
   const { data, error, reload } = useRemote<Page<GameSummary>>('/games');
   const { data: insights } = useRemote<InsightSnapshot | null>('/insights');
   const { data: practice } = useRemote<{ items: { id: string; state: string; reviewDueAt: string | null }[] }>('/puzzles?page=1');
+  const { data: sessions } = useRemote<{ items: { id: string; state: string }[] }>('/practice?page=1');
+  const { data: reports } = useRemote<{ items: { id: string; state: string; period: { fromDate: string } }[] }>('/reports?kind=weekly&page=1');
+  const unfinished = sessions?.items.find(session => ['preparing', 'active', 'waiting'].includes(session.state));
+  const lastReport = reports?.items.find(report => report.state === 'completed');
 
   const nextPuzzle = practice?.items.find(p => 
     p.state === 'ready' && p.reviewDueAt && new Date(p.reviewDueAt).getTime() <= Date.now());
@@ -182,6 +192,8 @@ function Dashboard() {
       <a className="button primary" href="#/import">＋ Import games</a>
     </div>
     <ErrorNotice message={error} retry={reload} />
+
+    {unfinished && <Panel className="practice-note"><p className="eyebrow">PICK UP WHERE YOU LEFT OFF</p><h2>Your mistake practice is saved.</h2><p>Return to the position and work toward its objective.</p><a className="button primary" href={`#/practice/${unfinished.id}`}>Resume mistake practice</a></Panel>}
 
     {nextPuzzle && <Panel className="practice-note">
       <p className="eyebrow">PRACTISE TODAY</p>
@@ -215,6 +227,7 @@ function Dashboard() {
         <a href="#/games">Open game library →</a>
       </Panel>
     </div>
+    <Panel className="dashboard-reflection"><h2>See what changes over time.</h2><p>Keep game evidence and training activity in view, with separate groups and clear sample sizes.</p><div className="analysis-actions"><a className="button" href={lastReport ? `#/reports/${lastReport.id}` : '#/reports'}>{lastReport ? 'Open latest weekly reflection' : 'Your weekly reports'}</a><a className="button" href="#/progress">Explore your progress</a></div></Panel>
     <div className="section-title"><h2>Recent games</h2><a href="#/games">View all games →</a></div>
     {!data && !error ? <Panel aria-busy="true">Loading your games…</Panel> : 
       data?.total ? <GameList games={data.items.slice(0, 5)} /> : 

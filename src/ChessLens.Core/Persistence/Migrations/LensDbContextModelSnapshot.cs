@@ -41,6 +41,10 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("DataVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -913,6 +917,115 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.ToTable("InsightSnapshots");
                 });
 
+            modelBuilder.Entity("ChessLens.Core.Reports.ReportSchedule", b =>
+                {
+                    b.Property<string>("OwnerId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("CycleWeekFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LeaseToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("NextCheckAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ScanBefore")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Timezone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("OwnerId");
+
+                    b.HasIndex("NextCheckAt", "LeaseUntil");
+
+                    b.ToTable("ReportSchedules");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Reports.ReportSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CacheIdentity")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<string>("InputsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LeaseToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RulesVersion")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ScopeIdentity")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "CacheIdentity")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerId", "CreatedAt");
+
+                    b.HasIndex("State", "LeaseUntil");
+
+                    b.HasIndex("OwnerId", "ScopeIdentity", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("ReportSnapshots");
+                });
+
             modelBuilder.Entity("ChessLens.Core.Training.PracticeAttempt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1142,6 +1255,9 @@ namespace ChessLens.Core.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("LeaseUntil")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Objective")
+                        .HasColumnType("text");
 
                     b.Property<string>("OwnerId")
                         .IsRequired()
@@ -1549,6 +1665,24 @@ namespace ChessLens.Core.Persistence.Migrations
                 });
 
             modelBuilder.Entity("ChessLens.Core.Insights.InsightSnapshot", b =>
+                {
+                    b.HasOne("ChessLens.Core.Accounts.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Reports.ReportSchedule", b =>
+                {
+                    b.HasOne("ChessLens.Core.Accounts.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Reports.ReportSnapshot", b =>
                 {
                     b.HasOne("ChessLens.Core.Accounts.AppUser", null)
                         .WithMany()

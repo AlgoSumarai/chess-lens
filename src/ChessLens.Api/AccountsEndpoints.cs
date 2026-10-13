@@ -64,6 +64,10 @@ public static class AccountsEndpoints
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({owner}, 0))", ct);
         // Lock jobs before associations so in-flight imports cannot resurrect deleted data.
+        await db.Users.Where(u => u.Id == owner).ExecuteUpdateAsync(s => s.SetProperty(u => u.DataVersion, u => u.DataVersion + 1)
+            .SetProperty(u => u.ConcurrencyStamp, Guid.NewGuid().ToString()), ct);
+        await db.ReportSnapshots.Where(r => r.OwnerId == owner).ExecuteDeleteAsync(ct);
+        await db.ReportSchedules.Where(r => r.OwnerId == owner).ExecuteDeleteAsync(ct);
         await db.ImportJobs.Where(j => j.OwnerId == owner).ExecuteDeleteAsync(ct);
         await db.InsightSnapshots.Where(j => j.OwnerId == owner).ExecuteDeleteAsync(ct);
         await db.UserGames.Where(g => g.OwnerId == owner).ExecuteDeleteAsync(ct);

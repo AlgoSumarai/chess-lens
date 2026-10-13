@@ -102,6 +102,7 @@ app.MapGames();
 app.MapImportBatches();
 app.MapCoaching();
 app.MapPractice();
+app.MapReports();
 app.Run();
 
 public partial class Program;

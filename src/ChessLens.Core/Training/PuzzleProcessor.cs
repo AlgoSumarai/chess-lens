@@ -55,6 +55,7 @@ public sealed class PuzzleProcessor(LensDbContext db, IChessEngine engine, ILogg
             await db.Puzzles.Where(j => j.Id == job.Id && j.LeaseToken == token && j.State == "running")
                 .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, result.Solution is null ? "rejected" : "ready")
                     .SetProperty(j => j.SolutionJson, json).SetProperty(j => j.Error, result.Rejection)
+                    .SetProperty(j => j.Objective, result.Solution == null ? null : result.Solution.Objective)
                     .SetProperty(j => j.ReviewDueAt, result.Solution == null ? (DateTimeOffset?)null : DateTimeOffset.UtcNow)
                     .SetProperty(j => j.LeaseUntil, (DateTimeOffset?)null).SetProperty(j => j.Version, j => j.Version + 1)
                     .SetProperty(j => j.UpdatedAt, DateTimeOffset.UtcNow), ct);

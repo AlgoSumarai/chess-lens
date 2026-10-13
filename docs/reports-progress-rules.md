@@ -1,6 +1,6 @@
-# Reports and comparable progress — implementation contract v1
+# Reports and comparable progress — v1
 
-This contract defines the next vertical slice. It is not a verification claim.
+Implemented rules version: `chesslens-reports-v1`, using the captured detector version/options. Verification is recorded separately in [the ledger](verification.md).
 
 ## Calendar and activity
 
@@ -14,11 +14,13 @@ The scheduler discovers completed weeks with new review activity, in bounded res
 
 Capture source-game identities/metadata, selected run IDs, their engine/settings/analysis/classification versions, detector options/version, training evidence/cutoff and the original date interval. Build against those exact immutable source/run references, never “latest” again after queuing. Completed results store their own coverage, findings, representative saved run/ply links and practice plan. Reanalysis cannot replace historical evidence. Imported-data deletion removes report snapshots and active work; late workers cannot recreate them.
 
-A report/progress snapshot selects at most 200 games and 20,000 source half-moves, with a 60-second processing deadline. Display total matching games, selected games and whether evidence selection was capped. Counts/rates derived from selected evidence are labelled accordingly; excluded/provisional/rejected/undated/missing-identity/unreviewed data remain visible. No fresh engine/model request occurs during aggregation.
+A report/progress snapshot selects 1–200 games **per period** (default 50) and at most 20,000 source half-moves across current and prior periods, with a 60-second processing deadline. If the combined evidence exceeds the limit, admit games alternately from each period's recent ordering, stopping that period at its first game that does not fit. Keep recent prefixes and matching totals; disclose the cap and suppress comparisons. Large weeks can still generate a useful bounded report. Capture has a separate 20-second HTTP deadline, two-megabyte input/output bounds, and no engine/model request during aggregation.
+
+Training details are capped at 2,000 finished attempts per period (puzzles first, then practice), with the full matching attempt count disclosed. Snapshot training completion dates/outcomes, objective, version and assistance independently of game dates. Today's due-puzzle schedule is shown only for a current progress capture, never inferred as a historical weekly due date. Admission permits one active report per owner, twenty new/retried snapshots per rolling day and at most 1,000 globally pending reports. Account usage survives imported-data deletion.
 
 ## Progress filters and grouping
 
-Progress uses an explicit played-at date interval, inclusive/exclusive, with source, colour, exact opening metadata, exact time control and grouped time-control filters. Unknown openings stay unknown. Unknown played-at dates are excluded and counted. A progress snapshot freezes the newest completed review at capture for each selected game.
+Progress accepts explicit UTC **from** and **through, inclusive** dates, converted to an inclusive/exclusive interval of at most 366 days. Source, colour, exact opening metadata, unknown-opening, exact time control and grouped time-control filters apply before selection. Unknown openings stay unknown. Unknown played-at dates are excluded and counted. A progress snapshot freezes the newest completed review at capture for each selected game. The immediately preceding period has the same UTC duration.
 
 For simple `baseSeconds` or `baseSeconds+incrementSeconds`, the group uses `base + 40 × increment`: bullet <180 seconds, blitz <600, rapid <1800, classical otherwise. A supported provider's correspondence pool or a PGN `days/move` control is correspondence. Multi-period/delay/malformed/missing controls are separately **unknown**; do not infer a group from a username or a rating. The exact original control is also retained and shown.
 
@@ -28,6 +30,12 @@ Partition comparisons by provider, rating pool (unknown kept separate), player c
 
 Reuse the versioned insight rules and unique-error union. Show error counts beside the eligible-player-decision denominator and every category's narrower denominator. Disclose provisional/rejected evidence and timing coverage. Training distinguishes solved/succeeded, failed/needs-practice, assisted, cancelled/restarted and ungraded outcomes; use puzzle/practice versions and objective context. Training completion alone does not establish improved match performance.
 
-Compare the immediately preceding equal calendar week (weekly report) or preceding equal UTC duration (progress), with the same filters/partition/settings, only when both sides have at least five reviewed games, stable evidence covers at least 80% of eligible decisions, coverage differs by at most ten percentage points and neither sample is capped. Otherwise say **insufficient comparable data** and explain why. An observed difference in supported error rates is descriptive, not proof that training caused improvement. Changes in sample/provider/pool/settings must not be hidden in a combined percentage.
+Compare the immediately preceding calendar week (weekly report) or equal UTC duration (progress), with the same filters/partition/settings, only when both sides have at least five reviewed games, known effective settings, at least 80% identity/completed-review coverage within the same selected source/pool/colour/opening/control/rated context, at least 80% stable player-decision coverage, both coverage measures differing by at most ten percentage points, and neither sample capped. Unknown identities remain in the possible context denominator. A game present in both weekly periods prevents treating reanalysis as an independent sample. Category comparisons also require five eligible games and ten eligible decisions in both periods, plus compatible clock coverage for time use. Otherwise say **insufficient comparable data** and explain why. An observed difference in supported error rates is descriptive, not proof that training caused improvement. Changes in sample/provider/pool/settings must not be hidden in a combined percentage.
 
 Include selected reviewed games and W/D/L/unknown counts, coverage, supported top weaknesses and exact representative positions, recorded training activity, a short evidence-based practice plan and the supported/insufficient prior-period comparison. No invented weakness or plan detail is filled in when evidence is absent. Email remains future scope.
+
+## Persistence and recovery
+
+Capture uses a consistent database snapshot. Admission acquires fresh owner/global locks and checks the account's data-deletion epoch before storing it. A fingerprint of evidence, settings, filters and original interval reuses the existing revision; capture wall time alone does not create another revision. A report lease lasts two minutes, permits three interrupted executions, and publishes only under its current lease token/state. Cancellation or deletion cannot be reversed by a late result. Explicit retry uses the original captured input and consumes admission again; choosing a new selection captures fresh evidence.
+
+The application worker checks durable schedules round-robin with other background work. Each tick admits at most one report and reads at most 100 completed-review timestamps for one owner. A persisted cursor backfills older closed weeks, waits while a captured report is pending and checks for newly arrived activity at least every six hours after a scan finishes. Timezone or local-week changes reset discovery. Running the worker is required; this is not a ChatGPT automation or an email service.
