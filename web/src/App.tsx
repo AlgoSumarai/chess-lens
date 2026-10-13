@@ -5,6 +5,7 @@ import { GameReview } from './GameReview';
 import { Weaknesses, type InsightSnapshot } from './Weaknesses';
 import { PuzzleLibrary, PuzzlePage, PuzzleAttemptPage } from './Puzzles';
 import { ImportPage, AnalysisBatchPage } from './Imports';
+import { PracticeLibrary, PracticePage } from './Practice';
 
 export function ErrorNotice({ message, retry }: { message: string; retry?: () => void }) {
   return message ? <div className="error" role="alert">{message}{retry && <button onClick={retry}>Retry</button>}</div> : null;
@@ -54,6 +55,7 @@ export function App() {
 
   links.splice(2, 0, ['/weaknesses', 'Weaknesses', '◎']);
   links.splice(3, 0, ['/puzzles', 'Puzzle practice', '♙']);
+  links.splice(4, 0, ['/practice', 'Mistake practice', '↺']);
 
   return <div className="shell">
     <a className="skip" href="#main" onClick={event => { 
@@ -85,7 +87,9 @@ export function App() {
           route === '/games' ? <Library /> : 
           route === '/import' ? <ImportPage /> :
           routePath.startsWith('/analysis-batches/') ? <AnalysisBatchPage id={routePath.split('/')[2]} key={route} /> :
-          route === '/weaknesses' ? <Weaknesses /> : 
+          routePath === '/weaknesses' ? <Weaknesses snapshotId={routeQuery.get('snapshot') ?? undefined} key={route} /> :
+          route === '/practice' ? <PracticeLibrary /> :
+          routePath.startsWith('/practice/') ? <PracticePage id={routePath.split('/')[2]} attemptId={routeQuery.get('attempt') ?? undefined} key={route} /> :
           route === '/puzzles' ? <PuzzleLibrary /> : 
           routePath.startsWith('/puzzles/attempts/') ? <PuzzleAttemptPage id={routePath.split('/')[3]} key={route} /> : 
           routePath.startsWith('/puzzles/') ? <PuzzlePage id = {routePath.split('/')[2]} key = {route} /> : 

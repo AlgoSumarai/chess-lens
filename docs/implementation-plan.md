@@ -36,7 +36,7 @@ The authoritative scope is [the full build brief](build-brief.md). All six miles
 
 ## Status
 
-Foundation, mainline/interactive analysis, core weakness snapshots and personal puzzle training are implemented, with backend/component/desktop/mobile container checks. Puzzle attempts retain hints/outcomes and spaced-review dates; real engine fixtures check short mating and material objectives. Draw history, compatible caching, partial-review recovery, versioned classification and coherent MultiPV batches have regression coverage. The remaining provider/AI, conversion/endgame, mistake-practice, reports/progress and release work is still required. No release gate is claimed complete. See `docs/verification.md` for actual evidence and limitations.
+Foundation, mainline/interactive analysis, core weakness snapshots and personal puzzle training are implemented, with backend/component/desktop/mobile container checks. Puzzle attempts retain hints/outcomes and spaced-review dates; real engine fixtures check short mating and material objectives. Draw history, compatible caching, partial-review recovery, versioned classification and coherent MultiPV batches have regression coverage. Provider imports, grounded coaching, conversion/endgame detectors and persistent mistake practice now have fresh slice evidence below. Reports/progress and release work remain required. No release gate is claimed complete. See `docs/verification.md` for actual evidence and limitations.
 
 ## Goal execution — 13 October 2026
 
@@ -45,3 +45,7 @@ The supplied baseline was rechecked at clean `main` / `42648a5`. The complete or
 Fresh baseline: locked .NET restore, 58 backend checks including real Stockfish, three component checks/build, and six desktop/mobile Compose journeys. The pre-existing database volume rejected the local `.env` credentials; its credentials and data were left intact. Verification uses a separate Compose project/database at port 54339 and loopback app port 8088.
 
 Provider imports/resync and durable bounded batch review are now implemented with two additive migrations. Contract/pipeline tests pass, and two games per provider import and resync through the actual Compose worker. Expanded browser verification is in progress. Next delivery order: grounded no-key/optional model coaching; conversion/endgame rules; mistake sessions; timezone reports/progress; integrated accessibility/recovery/release evidence and handover. Independent review is reserved until the whole integrated implementation and evidence are ready; zero rounds have been used.
+
+## 13 October — coaching, detectors and practice
+
+Grounded three-level coaching and v2 conversion/endgame detectors are implemented and committed at `76de5cd`, with fresh backend/component/Compose evidence. Persistent mistake practice now has a versioned migration, bounded full-strength objective grading, separate practical replies, assistance/history/attempts and connected exact-position/weakness links. All eighteen integrated desktop/mobile journeys pass on the ready v2 practice Compose build. Backend and affected rule checks, including the observed practical branch, pass; exact evidence and retained earlier failures are in the ledger. Next: timezone reports/progress, then integrated recovery/accessibility/release evidence and the independent review. Zero review rounds used.

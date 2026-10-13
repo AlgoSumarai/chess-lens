@@ -21,3 +21,9 @@ progress{width:100%;accent-color:var(--accent)}
 .weakness-list{display:grid;gap:1rem;margin-top:1.5rem}.insight-context,.analysis-group{margin:1.5rem 0}.practice-note{border-left:3px solid var(--accent);padding:.75rem 1rem;margin:1.2rem 0;background:#17232e}.evidence-list{list-style:none;padding:0}.evidence-list li{padding:1rem 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.evidence-list p{font-size:.9rem}.weakness-list h3{margin-top:.8rem}.weakness-list .section-title{flex-wrap:wrap}.weakness-list .eyebrow{overflow-wrap:anywhere}
 .puzzle-list{display:grid;gap:1rem}.puzzle-list .section-title{flex-wrap:wrap}.puzzle-create{display:grid;gap:.6rem;margin-top:1.3rem}.training-grid .board-controls{flex-wrap:wrap}.training-grid .board-controls button{white-space:normal}.training-grid .review-side{min-width:0}
 @media(max-width:850px){nav{overflow-x:auto;justify-content:flex-start}nav a{flex:0 0 auto}}
+.practice-create { display: grid; gap: .5rem; margin: 1rem 0; }
+.practice-move-form { display: flex; flex-wrap: wrap; gap: .8rem; align-items: end; margin: 1rem 0; }
+.practice-move-form label { flex: 1; min-width: 140px; }
+.practice-grade { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: .8rem; }
+.practice-grade p, .attempt-list a { overflow-wrap: anywhere; }
+.attempt-list { display: grid; gap: .8rem; padding-left: 1.2rem; }

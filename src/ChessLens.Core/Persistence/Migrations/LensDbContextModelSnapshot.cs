@@ -913,6 +913,212 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.ToTable("InsightSnapshots");
                 });
 
+            modelBuilder.Entity("ChessLens.Core.Training.PracticeAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AllGradesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Conclusion")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FinalCheckJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GradesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Hint")
+                        .HasColumnType("text");
+
+                    b.Property<string>("HintEvidenceJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("HintsUsed")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HistoryJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("InitialCheckJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("JournalJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ObjectiveJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OpponentSearchesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UndosUsed")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.HasIndex("SessionId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("PracticeAttempts");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Training.PracticeJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AttemptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LeaseToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SessionVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AttemptId");
+
+                    b.HasIndex("SessionId", "SessionVersion")
+                        .IsUnique();
+
+                    b.HasIndex("State", "LeaseUntil");
+
+                    b.ToTable("PracticeJobs");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Training.PracticeSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CurrentAttemptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ObjectiveJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Ply")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RulesVersion")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Side")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceEvidenceJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StartingPositionJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("WeaknessSnapshotId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WeaknessSnapshotId");
+
+                    b.HasIndex("OwnerId", "GameId");
+
+                    b.HasIndex("OwnerId", "UpdatedAt");
+
+                    b.HasIndex("RunId", "Ply");
+
+                    b.HasIndex("OwnerId", "RunId", "Ply", "RulesVersion")
+                        .IsUnique();
+
+                    b.ToTable("PracticeSessions");
+                });
+
             modelBuilder.Entity("ChessLens.Core.Training.Puzzle", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1043,6 +1249,33 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.HasIndex("OwnerId", "StartedAt");
 
                     b.ToTable("PuzzleAttempts");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Training.ResourceUsage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Units")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "Kind", "CreatedAt");
+
+                    b.ToTable("ResourceUsages");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1324,6 +1557,50 @@ namespace ChessLens.Core.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ChessLens.Core.Training.PracticeAttempt", b =>
+                {
+                    b.HasOne("ChessLens.Core.Training.PracticeSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Training.PracticeJob", b =>
+                {
+                    b.HasOne("ChessLens.Core.Training.PracticeAttempt", null)
+                        .WithMany()
+                        .HasForeignKey("AttemptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ChessLens.Core.Training.PracticeSession", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Training.PracticeSession", b =>
+                {
+                    b.HasOne("ChessLens.Core.Insights.InsightSnapshot", null)
+                        .WithMany()
+                        .HasForeignKey("WeaknessSnapshotId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("ChessLens.Core.Games.UserGame", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ChessLens.Core.Analysis.MoveAnalysis", null)
+                        .WithMany()
+                        .HasForeignKey("RunId", "Ply")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ChessLens.Core.Training.Puzzle", b =>
                 {
                     b.HasOne("ChessLens.Core.Games.UserGame", null)
@@ -1350,6 +1627,15 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.HasOne("ChessLens.Core.Training.Puzzle", null)
                         .WithMany()
                         .HasForeignKey("PuzzleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Training.ResourceUsage", b =>
+                {
+                    b.HasOne("ChessLens.Core.Accounts.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

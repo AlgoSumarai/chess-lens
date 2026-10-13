@@ -4,6 +4,7 @@ import { send, type Game } from './api';
 import { scoreLabel, whiteScore, type Analysis, type MoveAnalysis } from './analysis';
 import { ErrorNotice, Panel } from './App';
 import { CreatePuzzleButton } from './Puzzles';
+import { CreatePracticeButton } from './Practice';
 import { Coaching } from './Coaching';
 
 export function AnalysisPanel({ game, run, current, exploring, error, reload, connected, readOnly = false, coachingLevel = 'beginner', modelOptIn = false }: { game: Game; run: Analysis | null | undefined; current?: MoveAnalysis; exploring: boolean; error: string; reload: () => void; connected: boolean; readOnly?: boolean; coachingLevel?: string; modelOptIn?: boolean }) {
@@ -34,7 +35,7 @@ export function AnalysisPanel({ game, run, current, exploring, error, reload, co
     </div> : run && <p>Select an analysed move to inspect its evaluation and best continuation.</p>}
     {!active && !readOnly && <div className="analysis-actions"><button className="primary" disabled={pending} onClick={() => void queue('quick')}>{pending ? 'Queuing…' : run ? 'Run quick review again' : 'Analyse game'}</button><button disabled={pending} onClick={() => void queue('deep')}>Deep review</button></div>}
     {!exploring && run?.state === 'completed' && current?.complete && !current.provisional && <Coaching runId={run.id} ply={current.ply} fen={game.moves[current.ply - 1].fenBefore} level={coachingLevel} modelOptIn={modelOptIn} />}
-    {!exploring && run?.state === 'completed' && current?.complete && !current.provisional && current.side === game.playerColour && (current.centipawnLoss !== null && current.centipawnLoss >= 100 || current.mateTransition === 'missed-forced-mate' || current.mateTransition === 'allowed-forced-mate') && <CreatePuzzleButton runId={run.id} ply={current.ply} />}
+    {!exploring && run?.state === 'completed' && current?.complete && !current.provisional && current.side === game.playerColour && (current.centipawnLoss !== null && current.centipawnLoss >= 100 || current.mateTransition === 'missed-forced-mate' || current.mateTransition === 'allowed-forced-mate') && <><CreatePracticeButton runId={run.id} ply={current.ply} /><CreatePuzzleButton runId={run.id} ply={current.ply} /></>}
   </Panel>;
 }
 

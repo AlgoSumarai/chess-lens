@@ -3,6 +3,7 @@ import { send } from './api';
 import { useRemote } from './hooks';
 import { ErrorNotice, Panel } from './App';
 import { CreatePuzzleButton } from './Puzzles';
+import { CreatePracticeButton } from './Practice';
 
 type Evidence = { gameId: string; runId: string; ply: number; side: string; classification: string; source: string; timeControl: string | null; playedAt: string | null; explanation: string };
 type Finding = { category: string; group: string; claim: string; status: string; confidence: string; eligibleGames: number; eligibleMoves: number; occurrences: number; affectedGames: number;
@@ -17,8 +18,8 @@ export type InsightSnapshot = { id: string; state: string; version: number; crea
     options: { minimumGames: number; recurringGames: number; minimumClockMoves: number; minimumClockCoverage: number } } };
 const names: Record<string, string> = { 'hanging-material': 'Material safety', 'missed-tactics': 'Tactical opportunities', 'opening-mistakes': 'Opening decisions', 'time-trouble': 'Time use', 'conversion-problems': 'Keeping an advantage', 'endgame-errors': 'Endgame decisions' };
 
-export function Weaknesses() {
-  const { data: snapshot, error, reload } = useRemote<InsightSnapshot | null>('/insights', 2500);
+export function Weaknesses({ snapshotId }: { snapshotId?: string }) {
+  const { data: snapshot, error, reload } = useRemote<InsightSnapshot | null>(snapshotId ? `/insights/${snapshotId}` : '/insights', 2500);
   const [pending, setPending] = useState(false); const [problem, setProblem] = useState(''); const [group, setGroup] = useState(0);
   useEffect(() => setGroup(0), [snapshot?.id]);
   const active = snapshot?.state === 'queued' || snapshot?.state === 'running';
@@ -30,7 +31,8 @@ export function Weaknesses() {
     catch (e) { setProblem((e as Error).message); } finally { setPending(false); }
   };
   return <><div className="page-heading compact"><div><p className="eyebrow">PATTERNS, WITH EVIDENCE</p><h1>Your weaknesses</h1><p>Find recurring decisions worth practising. A single error is an early signal, not a pattern.</p></div></div>
-    <Panel><h2>Choose comparable games</h2><form onSubmit={generate}><div className="form-grid">
+    {snapshotId && <Panel><p>Viewing the saved evidence snapshot. Its selection and results stay unchanged.</p><a href="#/weaknesses">Choose a new selection</a></Panel>}
+    {!snapshotId && <Panel><h2>Choose comparable games</h2><form onSubmit={generate}><div className="form-grid">
       <label>From (UTC)<input name="from" type="date" required defaultValue={new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)} /></label>
       <label>To, exclusive (UTC)<input name="to" type="date" required defaultValue={new Date(Date.now() + 86400000).toISOString().slice(0, 10)} /></label>
       <label>Source<select name="source"><option value="">All sources</option><option value="pgn">PGN</option><option value="chesscom">Chess.com</option><option value="lichess">Lichess</option></select></label>
@@ -38,7 +40,7 @@ export function Weaknesses() {
       <label>Opening name<input name="opening" maxLength={2048} placeholder="Exact name, or leave blank" /></label>
       <label>Exact time control<input name="timeControl" maxLength={100} placeholder="600+5, or leave blank" /></label>
       <label>Maximum recent games<input name="maximumGames" type="number" min={1} max={200} defaultValue={50} required /></label>
-    </div><button className="primary" disabled={pending || active}>{pending ? 'Queuing…' : 'Find my patterns'}</button></form></Panel>
+    </div><button className="primary" disabled={pending || active}>{pending ? 'Queuing…' : 'Find my patterns'}</button></form></Panel>}
     <ErrorNotice message={error || problem || snapshot?.error || ''} retry={reload} />
     {active && <Panel><p role="status" aria-label="Insight status">{snapshot.state === 'queued' ? 'Waiting for completed game reviews…' : 'Checking patterns against your saved engine evidence…'}</p><button onClick={() => void send(`/insights/${snapshot.id}/cancel`).then(reload).catch(e => setProblem(e.message))}>Cancel insight review</button></Panel>}
     {!snapshot && !error && <Panel className="empty"><h2>Start with analysed games.</h2><p>Complete a game review and select your colour, then generate your first evidence snapshot.</p><a href="#/games">Open your games</a></Panel>}
@@ -69,6 +71,7 @@ export function Weaknesses() {
           <div className="practice-note"><strong>What to practise</strong><p>{f.practice}</p></div><details><summary>Inspect {f.evidence.length} supporting positions</summary><ul className="evidence-list">{f.evidence.map(e => <li key={e.gameId + '/' + e.ply}>
             <a href={`#/games/${e.gameId}?ply=${e.ply}&run=${e.runId}`}>Review move {Math.ceil(e.ply / 2)} · {e.side} · {e.classification}</a><p>{e.explanation}</p><small>{e.source} · {e.timeControl ?? 'Time control unavailable'} · {e.playedAt?.slice(0, 10) ?? 'Date unavailable'}</small>
             <CreatePuzzleButton runId={e.runId} ply={e.ply} />
+            <CreatePracticeButton runId={e.runId} ply={e.ply} weaknessSnapshotId={snapshot!.id} />
           </li>)}</ul></details></Panel>)}</div>
       </>}
     </>}

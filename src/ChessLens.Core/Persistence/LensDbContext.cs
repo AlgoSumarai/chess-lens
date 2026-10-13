@@ -29,6 +29,10 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
     public DbSet<PuzzleAttempt> PuzzleAttempts => Set<PuzzleAttempt>();
     public DbSet<CoachingJob> CoachingJobs => Set<CoachingJob>();
     public DbSet<CoachingUsage> CoachingUsages => Set<CoachingUsage>();
+    public DbSet<PracticeSession> PracticeSessions => Set<PracticeSession>();
+    public DbSet<PracticeAttempt> PracticeAttempts => Set<PracticeAttempt>();
+    public DbSet<PracticeJob> PracticeJobs => Set<PracticeJob>();
+    public DbSet<ResourceUsage> ResourceUsages => Set<ResourceUsage>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -137,6 +141,33 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
             e.HasOne<CoachingJob>().WithMany().HasForeignKey(u => u.JobId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(u => new { u.OwnerId, u.CreatedAt });
             e.HasIndex(u => u.CreatedAt);
+        });
+        b.Entity<PracticeSession>(e =>
+        {
+            e.HasOne<UserGame>().WithMany().HasForeignKey(s => new { s.OwnerId, s.GameId }).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<MoveAnalysis>().WithMany().HasForeignKey(s => new { s.RunId, s.Ply }).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<InsightSnapshot>().WithMany().HasForeignKey(s => s.WeaknessSnapshotId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(s => new { s.OwnerId, s.RunId, s.Ply, s.RulesVersion }).IsUnique();
+            e.HasIndex(s => new { s.OwnerId, s.UpdatedAt });
+            e.Property(s => s.Version).IsConcurrencyToken();
+        });
+        b.Entity<PracticeAttempt>(e =>
+        {
+            e.HasOne<PracticeSession>().WithMany().HasForeignKey(a => a.SessionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(a => new { a.SessionId, a.Number }).IsUnique();
+            e.HasIndex(a => a.StartedAt);
+        });
+        b.Entity<PracticeJob>(e =>
+        {
+            e.HasOne<PracticeSession>().WithMany().HasForeignKey(j => j.SessionId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<PracticeAttempt>().WithMany().HasForeignKey(j => j.AttemptId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(j => new { j.SessionId, j.SessionVersion }).IsUnique();
+            e.HasIndex(j => new { j.State, j.LeaseUntil });
+        });
+        b.Entity<ResourceUsage>(e =>
+        {
+            e.HasOne<AppUser>().WithMany().HasForeignKey(u => u.OwnerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(u => new { u.OwnerId, u.Kind, u.CreatedAt });
         });
     }
 }

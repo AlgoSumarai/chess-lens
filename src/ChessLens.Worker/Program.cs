@@ -29,6 +29,7 @@ builder.Services.AddScoped<InsightProcessor>();
 builder.Services.AddScoped<PuzzleProcessor>();
 builder.Services.AddHostedService<ImportWorker>();
 builder.Services.AddScoped<PositionAnalysisProcessor>();
+builder.Services.AddScoped<PracticeProcessor>();
 builder.Services.AddHostedService<PositionWorker>();
 
 var host = builder.Build();

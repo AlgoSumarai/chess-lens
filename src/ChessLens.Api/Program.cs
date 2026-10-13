@@ -101,6 +101,7 @@ app.MapHub<ProgressHub>("/hubs/progress").RequireAuthorization();
 app.MapGames();
 app.MapImportBatches();
 app.MapCoaching();
+app.MapPractice();
 app.Run();
 
 public partial class Program;
