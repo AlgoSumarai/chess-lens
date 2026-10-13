@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using ChessLens.Core.Operations;
 using System.Text.Json;
 using ChessLens.Core.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -5,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace ChessLens.Core.Coaching;
 
-public sealed class CoachingProcessor(LensDbContext db, ICoachingModel model, IOptions<CoachingOptions> configuration)
+public sealed class CoachingProcessor(LensDbContext db, ICoachingModel model, IOptions<CoachingOptions> configuration, ILogger<CoachingProcessor>? logger = null)
 {
     public async Task<bool> RunNext(CancellationToken ct)
     {
@@ -25,6 +27,7 @@ public sealed class CoachingProcessor(LensDbContext db, ICoachingModel model, IO
             job.Attempts++; job.Version++; job.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "coaching", job.Id);
         db.ChangeTracker.Clear();
         try
         {
@@ -68,6 +71,7 @@ public sealed class CoachingProcessor(LensDbContext db, ICoachingModel model, IO
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error)
         {
+            execution.Interrupted(error);
             var permanent = error is JsonException or ArgumentException || job.Attempts >= 3;
             await db.CoachingJobs.Where(j => j.Id == job.Id && j.LeaseToken == token && j.State == "running")
                 .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, permanent ? "failed" : "queued")

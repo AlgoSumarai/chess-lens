@@ -10,3 +10,4 @@
 .vs/
 *.user
 *.log
+**/__pycache__/

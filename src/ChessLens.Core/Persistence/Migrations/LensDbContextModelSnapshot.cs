@@ -937,6 +937,34 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.ToTable("InsightSnapshots");
                 });
 
+            modelBuilder.Entity("ChessLens.Core.Operations.WorkerStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("EngineCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("InteractiveLaneAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastSeen")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("MainLaneAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Ready")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastSeen");
+
+                    b.ToTable("WorkerStatuses");
+                });
+
             modelBuilder.Entity("ChessLens.Core.Reports.ReportSchedule", b =>
                 {
                     b.Property<string>("OwnerId")

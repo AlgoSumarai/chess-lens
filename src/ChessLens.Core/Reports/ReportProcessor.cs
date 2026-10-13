@@ -1,3 +1,4 @@
+using ChessLens.Core.Operations;
 using System.Text;
 using System.Text.Json;
 using ChessLens.Core.Persistence;
@@ -24,6 +25,7 @@ public sealed class ReportProcessor(LensDbContext db, ILogger<ReportProcessor>? 
             job = rows[0]; job.State = "running"; job.Attempts++; job.LeaseToken = token; job.LeaseUntil = DateTimeOffset.UtcNow.AddMinutes(2);
             job.Version++; job.UpdatedAt = DateTimeOffset.UtcNow; await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "report", job.Id);
         db.ChangeTracker.Clear();
         try
         {
@@ -42,7 +44,7 @@ public sealed class ReportProcessor(LensDbContext db, ILogger<ReportProcessor>? 
         catch (Exception error)
         {
             var permanent = error is ArgumentException or OperationCanceledException || job.Attempts >= 3;
-            logger?.LogWarning(error, "Report {ReportId} execution {Attempt} interrupted", job.Id, job.Attempts);
+            execution.Interrupted(error);
             await db.ReportSnapshots.Where(r => r.Id == job.Id && r.State == "running" && r.LeaseToken == token)
                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.State, permanent ? "failed" : "queued")
                     .SetProperty(r => r.Error, error is ArgumentException ? error.Message : "Report generation was interrupted or reached its processing budget. Try fewer games if this repeats.")

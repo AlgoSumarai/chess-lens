@@ -62,7 +62,8 @@ public sealed class ReportScheduler(LensDbContext db, IOptions<InsightOptions> c
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error)
         {
-            if (error is not (ReportBudgetReached or ResourceBudgetReached or ReportDataChanged)) logger?.LogWarning(error, "Weekly report schedule for owner {OwnerId} interrupted", schedule.OwnerId);
+            if (error is not (ReportBudgetReached or ResourceBudgetReached or ReportDataChanged))
+                logger?.LogWarning("Weekly report schedule lease {ScheduleLease} interrupted: {ErrorType}", token, error.GetType().Name);
             await db.ReportSchedules.Where(s => s.OwnerId == schedule.OwnerId && s.LeaseToken == token)
                 .ExecuteUpdateAsync(s => s.SetProperty(s => s.LeaseUntil, (DateTimeOffset?)null).SetProperty(s => s.NextCheckAt, now.AddMinutes(1)), ct);
         }

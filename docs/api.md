@@ -36,7 +36,7 @@ Requests and responses use camelCase JSON. Authentication uses an HttpOnly `ches
 | GET `/api/insights/{id}` | A specific saved snapshot including filters, coverage, analysis groups, findings and supporting move/run references. |
 | POST `/api/insights/{id}/cancel` | Cancels queued/running generation; a late worker result cannot revive it. |
 | GET `/health/live` | Process liveness. |
-| GET `/health/ready` | Database connectivity and migration readiness. |
+| GET `/health/ready` | Migrated database and fresh worker/engine/lane readiness; 503 with a service category when unavailable. See [operations](operations.md). |
 
 ## SignalR
 

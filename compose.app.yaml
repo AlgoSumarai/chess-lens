@@ -3,7 +3,7 @@ services:
     build: { context: ., target: api }
     command: ["--migrate"]
     environment:
-      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD};GSS Encryption Mode=Disable
     depends_on:
       database: { condition: service_healthy }
     volumes:
@@ -11,7 +11,7 @@ services:
   api:
     build: { context: ., target: api }
     environment:
-      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD};GSS Encryption Mode=Disable
       ASPNETCORE_ENVIRONMENT: Development
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -19,10 +19,16 @@ services:
       - protection-keys:/app/keys
     restart: unless-stopped
     mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "dotnet", "ChessLens.Api.dll", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
   worker:
     build: { context: ., target: worker }
     environment:
-      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD};GSS Encryption Mode=Disable
       Analysis__InaccuracyCentipawns: ${ANALYSIS_INACCURACY_CP:-50}
       Analysis__MistakeCentipawns: ${ANALYSIS_MISTAKE_CP:-100}
       Analysis__BlunderCentipawns: ${ANALYSIS_BLUNDER_CP:-200}
@@ -31,9 +37,22 @@ services:
     restart: unless-stopped
     cpus: 2
     mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "dotnet", "ChessLens.Worker.dll", "--healthcheck"]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
   frontend:
     build: { context: web }
     ports:
       - "127.0.0.1:${APP_PORT:-8088}:8080"
-    depends_on: [api]
+    depends_on:
+      api: { condition: service_healthy }
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "4", "-O", "/dev/null", "http://127.0.0.1:8080/health/ready"]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3

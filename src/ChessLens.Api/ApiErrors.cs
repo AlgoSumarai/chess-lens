@@ -9,7 +9,7 @@ public sealed class ApiErrors(IProblemDetailsService problems, ILogger<ApiErrors
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
         var status = exception is ResourceBudgetReached ? 429 : exception is ArgumentException or BadHttpRequestException ? 400 : 500;
-        if (status == 500) log.LogError(exception, "Request failed {CorrelationId}", context.TraceIdentifier);
+        if (status == 500) log.LogError("Request failed {CorrelationId}: {ErrorType} {StackTrace}", context.TraceIdentifier, exception.GetType().Name, exception.StackTrace);
         context.Response.StatusCode = status;
         return await problems.TryWriteAsync(new ProblemDetailsContext
         {

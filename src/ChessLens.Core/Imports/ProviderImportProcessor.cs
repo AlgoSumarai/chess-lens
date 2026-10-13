@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using ChessLens.Core.Operations;
 using System.Text;
 using System.Text.Json;
 using ChessLens.Core.Persistence;
@@ -6,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace ChessLens.Core.Imports;
 
 /// <summary>Each tick commits one bounded provider page or 16 validated games, then yields to other work.</summary>
-public sealed class ProviderImportProcessor(LensDbContext db, PgnReader reader, IProviderHttpClient http)
+public sealed class ProviderImportProcessor(LensDbContext db, PgnReader reader, IProviderHttpClient http, ILogger<ProviderImportProcessor>? logger = null)
 {
     public async Task<bool> RunNext(CancellationToken ct)
     {
@@ -29,6 +31,7 @@ public sealed class ProviderImportProcessor(LensDbContext db, PgnReader reader, 
             ImportProcessor.Touch(initial);
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "provider-import", initial.Id);
         db.ChangeTracker.Clear();
         try
         {
@@ -41,6 +44,7 @@ public sealed class ProviderImportProcessor(LensDbContext db, PgnReader reader, 
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error)
         {
+            execution.Interrupted(error);
             db.ChangeTracker.Clear();
             await Mutate(initial.Id, token, job =>
             {

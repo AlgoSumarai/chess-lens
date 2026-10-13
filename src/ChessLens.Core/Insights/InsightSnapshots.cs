@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using ChessLens.Core.Operations;
 using System.Text.Json;
 using ChessLens.Core.Analysis;
 using ChessLens.Core.Games;
@@ -37,7 +39,7 @@ public sealed record InsightGroup(string Engine, string Profile, string Analysis
 public sealed record InsightResult(InsightFilter Filter, InsightOptions Options, int MatchingGames, int SelectedGames, int MissingIdentityGames,
     int WithoutCompletedAnalysis, int UndatedGamesExcluded, bool SelectionCapped, InsightGroup[] Groups);
 
-public sealed class InsightProcessor(LensDbContext db)
+public sealed class InsightProcessor(LensDbContext db, ILogger<InsightProcessor>? logger = null)
 {
     public async Task<bool> RunNext(CancellationToken ct)
     {
@@ -57,6 +59,7 @@ public sealed class InsightProcessor(LensDbContext db)
             job.Version++; job.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "insight", job.Id);
         db.ChangeTracker.Clear();
         try
         {
@@ -73,6 +76,7 @@ public sealed class InsightProcessor(LensDbContext db)
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error)
         {
+            execution.Interrupted(error);
             var permanent = error is ArgumentException or OperationCanceledException || job.Attempts >= 3;
             await db.InsightSnapshots.Where(j => j.Id == job.Id && j.LeaseToken == token && j.State == "running")
                 .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, permanent ? "failed" : "queued")

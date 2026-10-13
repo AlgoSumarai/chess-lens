@@ -53,3 +53,8 @@ Grounded three-level coaching and v2 conversion/endgame detectors are implemente
 ## 13 October — reports and progress
 
 The reports/progress vertical slice adds persistent calendar intervals, dataset/settings revisions, scheduler/backfill, quotas, cancellation/deletion barriers, bounded aggregation, independent provider/pool/profile groups, coverage-aware prior-period comparisons and connected screens. All 186 integrated backend checks, 44 focused report checks and 10 component checks pass. Four targeted desktop/mobile Compose journeys pass: the complete learning loop with real Stockfish and training shown in progress, and saved weekly reports using explicitly labelled retrospective completion timestamps. The full browser regression and remaining release/recovery/security/accessibility/architecture/licence/benchmark evidence precede independent review. Zero rounds used.
+
+
+## 13 October — Engine operations and recovery
+
+Reports/progress and private PGN isolation are committed. Retained/shared work admission and database-coordinated engine slots are committed at `291a1e8` and `388935f`. Subsequent validation uses native Docker Engine 29.9.0, as directed by the user, with separate new volumes. Worker/engine readiness and safe structured logs now pass 206 backend checks; actual worker SIGKILL, database outage/restart and unchanged five-minute lease recovery preserve the observed saved review prefix and complete 31 plies without duplication. Native restored-copy migration preserves core data digests. Remaining release/accessibility/security/mixed-load/architecture/licensing/CI/clean-checkout gates and independent review stay open. Zero review rounds used.

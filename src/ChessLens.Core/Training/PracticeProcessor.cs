@@ -1,3 +1,4 @@
+using ChessLens.Core.Operations;
 using System.Text.Json;
 using ChessLens.Core.Analysis;
 using ChessLens.Core.Games;
@@ -23,6 +24,7 @@ public sealed class PracticeProcessor(LensDbContext db, IChessEngine engine, ILo
             job = rows[0]; job.State = "running"; job.LeaseToken = token; job.LeaseUntil = DateTimeOffset.UtcNow.AddMinutes(2);
             job.Attempts++; await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "practice", job.Id);
         db.ChangeTracker.Clear();
         try
         {
@@ -110,7 +112,7 @@ public sealed class PracticeProcessor(LensDbContext db, IChessEngine engine, ILo
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error)
         {
-            logger?.LogWarning(error, "Practice job {JobId} session {SessionId} execution {Attempt} interrupted", job.Id, job.SessionId, job.Attempts);
+            execution.Interrupted(error);
             await Failed(job, token, ct);
         }
         return true;
@@ -151,7 +153,7 @@ public sealed class PracticeProcessor(LensDbContext db, IChessEngine engine, ILo
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         catch (Exception error)
-        { logger?.LogWarning(error, "Practice job {JobId} lost its durable state check", job.Id); await deadline.CancelAsync(); }
+        { logger?.LogWarning("Practice job {JobId} lost its durable state check: {ErrorType}", job.Id, error.GetType().Name); await deadline.CancelAsync(); }
     }
     private Task Supersede(PracticeJob job, string token, CancellationToken ct) => db.PracticeJobs
         .Where(j => j.Id == job.Id && j.LeaseToken == token && j.State == "running")

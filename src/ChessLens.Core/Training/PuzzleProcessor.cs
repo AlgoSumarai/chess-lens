@@ -1,3 +1,4 @@
+using ChessLens.Core.Operations;
 using System.Text.Json;
 using ChessLens.Core.Analysis;
 using ChessLens.Core.Persistence;
@@ -25,6 +26,7 @@ public sealed class PuzzleProcessor(LensDbContext db, IChessEngine engine, ILogg
             job.Version++; job.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "puzzle", job.Id);
         db.ChangeTracker.Clear();
         try
         {
@@ -63,6 +65,7 @@ public sealed class PuzzleProcessor(LensDbContext db, IChessEngine engine, ILogg
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception error)
         {
+            execution.Interrupted(error);
             var permanent = error is ArgumentException or OperationCanceledException || job.Attempts >= 3;
             await db.Puzzles.Where(j => j.Id == job.Id && j.LeaseToken == token && j.State == "running")
                 .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, permanent ? "failed" : "queued")

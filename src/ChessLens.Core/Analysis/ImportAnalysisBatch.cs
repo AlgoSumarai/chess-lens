@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ChessLens.Core.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace ChessLens.Core.Analysis;
 
@@ -20,7 +21,7 @@ public sealed class ImportAnalysisBatch
 }
 
 /// <summary>Reserves bounded reviews on submission and admits them fairly under the existing three-review limit.</summary>
-public sealed class ImportBatchProcessor(LensDbContext db)
+public sealed class ImportBatchProcessor(LensDbContext db, ILogger<ImportBatchProcessor>? logger = null)
 {
     public async Task<bool> RunNext(CancellationToken ct)
     {
@@ -59,7 +60,9 @@ public sealed class ImportBatchProcessor(LensDbContext db)
             if (changed)
             {
                 batch.Version++; batch.UpdatedAt = DateTimeOffset.UtcNow;
-                await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return true;
+                await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+                logger?.LogInformation("Analysis batch {JobId} recorded state {JobState} at version {JobVersion}", batch.Id, batch.State, batch.Version);
+                return true;
             }
             await tx.CommitAsync(ct);
         }

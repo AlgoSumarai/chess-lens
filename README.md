@@ -8,19 +8,21 @@ The stack is C# / ASP.NET Core, PostgreSQL, a separate Stockfish worker, and Rea
 
 ## Local startup
 
-On Windows 11 with Docker running, execute from the repository root:
-
-```powershell
-./scripts/start.ps1
-```
-
-This generates a random local database password, builds the images, applies versioned migrations and starts the database, API, worker and frontend. Open `http://localhost:8088`. Containers bind only to loopback. `DATABASE_PORT` and `APP_PORT` can override the local ports for isolated verification projects. No cloud service is created.
-
-On Linux or Ubuntu WSL with Docker Engine and the Compose plugin, create `.env` from `.env.example` with a random password, then:
+Use Linux Docker Engine with the Compose plugin and Python 3, on Linux or inside Ubuntu WSL 2. From the repository root:
 
 ```sh
-docker compose -f compose.yaml -f compose.app.yaml up -d --build
+./scripts/start.sh
 ```
+
+This selects Docker Engine's `default` context, preserves an existing `.env` or generates a random database password, builds images, stops old API/worker versions, applies migrations and waits for database/worker/engine readiness. Open `http://localhost:8088`. Containers bind only to loopback. Set `CHESSLENS_DOCKER_CONTEXT` for another Linux Engine context, `CHESSLENS_PROJECT` for an isolated project, and `DATABASE_PORT`/`APP_PORT` for different local ports. The script rejects Docker Desktop. Existing volume credentials must match `.env`; restarting does not reset a volume's password. Back up before an upgrade; migration startup has a brief application interruption.
+
+On Windows 11, install Docker Engine and the Compose plugin inside Ubuntu WSL 2, keep the checkout in its Linux filesystem, then run from PowerShell (adjust the distribution/path):
+
+```powershell
+wsl -d Ubuntu -- bash -lc 'cd ~/repos/chess-lens && ./scripts/start.sh'
+```
+
+If PowerShell's Docker CLI already connects to a Linux Engine context, `./scripts/start.ps1 -DockerContext default` performs the equivalent startup. [Microsoft's WSL commands](https://learn.microsoft.com/en-us/windows/wsl/basic-commands) and [Docker's group/session instructions](https://docs.docker.com/engine/install/linux-postinstall/) describe setup. New Docker group membership requires a fresh login or `newgrp docker`. Native Linux verification and Windows/WSL verification are tracked separately in the ledger; a documented command is not a claim that Windows has been tested.
 
 Current worker image targets Linux x86-64 and bundles the universal Stockfish 19 binary. ARM64 packaging remains a release task.
 
@@ -37,7 +39,7 @@ Stop containers with `docker compose -f compose.yaml -f compose.app.yaml stop`. 
 
 ## Native development
 
-Requires .NET 10 SDK, Node 24 and PostgreSQL (the database-only Compose file supplies it).
+Requires .NET SDK 10.0.401 (or a newer servicing patch in that feature band), Node 24 and PostgreSQL (the database-only Compose file supplies it).
 
 ```powershell
 ./scripts/init-env.ps1

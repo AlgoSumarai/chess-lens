@@ -96,3 +96,7 @@ Use this exact loop: review round 1; if it fails, fix the findings, rerun affect
 Deliver the complete source/migrations/configuration, a runnable local release, reproducible checks, evidence and independent review record, updated documentation and a short demonstration script. Summarize what changed, why, how it was verified, final quality scores/round count and any material limitations or externally blocked gates. Distinguish locally validated release preparation from an actual public deployment.
 
 Continue autonomously through routine technical decisions. Do not stop at a plan or declare completion merely because a feature exists in code. The goal is complete only when the full required coaching loop works, all acceptance gates pass and the independent quality threshold is met within the review limit.
+
+## Additional user direction — 13 October 2026
+
+Use Docker Engine, not Docker Desktop, for subsequent implementation and validation. Preserve the full original goal above.

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using ChessLens.Core.Operations;
 using System.Text.Json;
 using ChessLens.Core.Games;
 using ChessLens.Core.Persistence;
@@ -6,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace ChessLens.Core.Analysis;
 
-public sealed class AnalysisProcessor(LensDbContext db, IChessEngine engine, IOptions<AnalysisOptions>? options = null)
+public sealed class AnalysisProcessor(LensDbContext db, IChessEngine engine, IOptions<AnalysisOptions>? options = null, ILogger<AnalysisProcessor>? logger = null)
 {
     private const long MaxGameMilliseconds = 600_000;
     private readonly AnalysisOptions configuredThresholds = options?.Value ?? new();
@@ -34,6 +36,7 @@ public sealed class AnalysisProcessor(LensDbContext db, IChessEngine engine, IOp
             Touch(run);
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "analysis", id);
         db.ChangeTracker.Clear();
         try
         {
@@ -123,6 +126,7 @@ public sealed class AnalysisProcessor(LensDbContext db, IChessEngine engine, IOp
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception e)
         {
+            execution.Interrupted(e);
             db.ChangeTracker.Clear();
             var run = await db.AnalysisRuns.SingleOrDefaultAsync(r => r.Id == id && r.LeaseToken == token, ct);
             if (run is not null)

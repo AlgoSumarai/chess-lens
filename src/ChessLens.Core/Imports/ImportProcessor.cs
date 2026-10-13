@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using ChessLens.Core.Operations;
 using System.Text.Json;
 using ChessLens.Core.Games;
 using ChessLens.Core.Persistence;
@@ -5,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChessLens.Core.Imports;
 
-public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
+public sealed class ImportProcessor(LensDbContext db, PgnReader reader, ILogger<ImportProcessor>? logger = null)
 {
     public async Task<bool> RunNext(CancellationToken ct)
     {
@@ -33,6 +35,7 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "pgn-import", id);
         db.ChangeTracker.Clear();
         try
         {
@@ -94,6 +97,7 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch (Exception e)
         {
+            execution.Interrupted(e);
             db.ChangeTracker.Clear();
             var job = await db.ImportJobs.SingleOrDefaultAsync(j => j.Id == id && j.LeaseToken == token, ct);
             if (job is not null)

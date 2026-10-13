@@ -9,7 +9,19 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
+if (args.Contains("--healthcheck"))
+{
+    try
+    {
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
+        using var response = await client.GetAsync("http://127.0.0.1:8080/health/ready");
+        Environment.ExitCode = response.IsSuccessStatusCode ? 0 : 1;
+    }
+    catch { Environment.ExitCode = 1; }
+    return;
+}
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddJsonConsole(o => { o.IncludeScopes = true; o.TimestampFormat = "O"; });
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 12 * 1024 * 1024);
 builder.Services.ConfigureHttpJsonOptions(o =>
 {
@@ -60,6 +72,8 @@ if (args.Contains("--migrate"))
 app.UseExceptionHandler();
 app.Use(async (ctx, next) =>
 {
+    using var scope = app.Logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = ctx.TraceIdentifier });
+    ctx.Response.Headers["X-Correlation-ID"] = ctx.TraceIdentifier;
     ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
     ctx.Response.Headers["Referrer-Policy"] = "same-origin";
     ctx.Response.Headers["X-Frame-Options"] = "DENY";
@@ -87,10 +101,7 @@ app.Use(async (ctx, next) =>
     }
     await next();
 });
-app.MapGet("/health/live", () => Results.Ok(new { status = "alive" }));
-app.MapGet("/health/ready", async (LensDbContext db, CancellationToken ct) =>
-    await db.Database.CanConnectAsync(ct) && !(await db.Database.GetPendingMigrationsAsync(ct)).Any()
-        ? Results.Ok(new { status = "ready" }) : Results.StatusCode(503));
+app.MapHealth();
 app.MapAccounts();
 app.MapDemo();
 app.MapAnalysis();

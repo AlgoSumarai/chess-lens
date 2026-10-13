@@ -6,6 +6,7 @@ using ChessLens.Core.Insights;
 using ChessLens.Core.Training;
 using ChessLens.Core.Coaching;
 using ChessLens.Core.Reports;
+using ChessLens.Core.Operations;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,10 +38,12 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
     public DbSet<ResourceUsage> ResourceUsages => Set<ResourceUsage>();
     public DbSet<ReportSnapshot> ReportSnapshots => Set<ReportSnapshot>();
     public DbSet<ReportSchedule> ReportSchedules => Set<ReportSchedule>();
+    public DbSet<WorkerStatus> WorkerStatuses => Set<WorkerStatus>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
         base.OnModelCreating(b);
+        b.Entity<WorkerStatus>().HasIndex(s => s.LastSeen);
         b.Entity<AppUser>().Property(u => u.DataVersion).IsConcurrencyToken();
         b.HasDbFunction(typeof(TimeControlGroups).GetMethod(nameof(TimeControlGroups.SqlGroup))!).HasName("chesslens_time_control_group_v1");
         b.Entity<SourceGame>(e =>

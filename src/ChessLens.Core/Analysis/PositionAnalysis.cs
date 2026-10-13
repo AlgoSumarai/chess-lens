@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using ChessLens.Core.Operations;
 using System.Text.Json;
 using ChessLens.Core.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -37,7 +39,7 @@ public sealed class PositionAnalysisJob
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
-public sealed class PositionAnalysisProcessor(LensDbContext db, IChessEngine engine)
+public sealed class PositionAnalysisProcessor(LensDbContext db, IChessEngine engine, ILogger<PositionAnalysisProcessor>? logger = null)
 {
     public static SearchBudget Budget => new("position-review-v1", 100_000, 2000, 3);
     public async Task<bool> RunNext(CancellationToken ct)
@@ -58,6 +60,7 @@ public sealed class PositionAnalysisProcessor(LensDbContext db, IChessEngine eng
             job.LeaseUntil = DateTimeOffset.UtcNow.AddMinutes(5); job.Version++; job.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         }
+        using var execution = new JobExecution(logger, "position", job.Id);
         db.ChangeTracker.Clear();
         try
         {
@@ -74,8 +77,9 @@ public sealed class PositionAnalysisProcessor(LensDbContext db, IChessEngine eng
                     .SetProperty(j => j.Version, j => j.Version + 1).SetProperty(j => j.UpdatedAt, DateTimeOffset.UtcNow), ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch
+        catch (Exception error)
         {
+            execution.Interrupted(error);
             await db.PositionAnalysisJobs.Where(j => j.Id == job.Id && j.LeaseToken == token && j.State == "running")
                 .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, job.Attempts >= 3 ? "failed" : "queued")
                     .SetProperty(j => j.Error, "Position analysis interrupted; retrying within its resource limit.")

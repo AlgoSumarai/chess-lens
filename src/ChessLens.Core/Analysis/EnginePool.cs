@@ -27,8 +27,10 @@ public sealed class EnginePool : IChessEngine, IAsyncDisposable
     private readonly ILogger<EnginePool> logger;
     private readonly Task maintenance;
     private long yieldUntil;
+    private long lastSuccessfulSearch;
     private int disposed;
     public int[] ProcessIds => live.Keys.Order().ToArray();
+    public DateTimeOffset? LastSuccessfulSearch => Interlocked.Read(ref lastSuccessfulSearch) is var ticks && ticks > 0 ? new(ticks, TimeSpan.Zero) : null;
 
     // A null slot coordinator is for standalone engine protocol tests only.
     // The application worker always supplies its required database coordinator.
@@ -76,6 +78,7 @@ public sealed class EnginePool : IChessEngine, IAsyncDisposable
             using var search = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token, entry.Lease?.Lost ?? CancellationToken.None);
             var result = await entry.Engine.Search(position, budget, searchMoves, skill, search.Token);
             search.Token.ThrowIfCancellationRequested();
+            Interlocked.Exchange(ref lastSuccessfulSearch, DateTimeOffset.UtcNow.Ticks);
             return result;
         }
         finally

@@ -8,7 +8,9 @@ using ChessLens.Core.Coaching;
 using ChessLens.Core.Reports;
 using Microsoft.EntityFrameworkCore;
 
+if (args.Contains("--healthcheck")) { Environment.ExitCode = await WorkerHealth.CheckLocal(); return; }
 var builder = Host.CreateApplicationBuilder(args);
+builder.Logging.AddJsonConsole(o => { o.IncludeScopes = true; o.TimestampFormat = "O"; });
 builder.Services.AddDbContext<LensDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException("ConnectionStrings__Database is required.")));
 builder.Services.AddSingleton<PgnReader>();
@@ -21,7 +23,10 @@ builder.Services.AddOptions<AnalysisOptions>().Bind(builder.Configuration.GetSec
     .Validate(o => o.InaccuracyCentipawns >= 1 && o.MistakeCentipawns > o.InaccuracyCentipawns &&
         o.BlunderCentipawns > o.MistakeCentipawns && o.BlunderCentipawns <= 10_000, "Classification thresholds must be strictly increasing.")
     .ValidateOnStart();
-builder.Services.AddSingleton<IChessEngine, EnginePool>();
+builder.Services.AddSingleton<EnginePool>();
+builder.Services.AddSingleton<IChessEngine>(s => s.GetRequiredService<EnginePool>());
+builder.Services.AddSingleton<WorkerActivity>();
+builder.Services.AddHostedService<WorkerHealth>();
 builder.Services.AddScoped<AnalysisProcessor>();
 builder.Services.AddScoped<ImportBatchProcessor>();
 builder.Services.Configure<CoachingOptions>(builder.Configuration.GetSection("Coaching"));
