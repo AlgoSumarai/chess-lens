@@ -34,6 +34,6 @@ services:
   frontend:
     build: { context: web }
     ports:
-      - "127.0.0.1:8088:8080"
+      - "127.0.0.1:${APP_PORT:-8088}:8080"
     depends_on: [api]
     restart: unless-stopped

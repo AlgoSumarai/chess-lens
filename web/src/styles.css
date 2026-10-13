@@ -1,4 +1,5 @@
 @import "tailwindcss";
+progress{width:100%;accent-color:var(--accent)}
 
 /* Grid tracks must shrink below the board/graph's intrinsic content width. */
 .review-grid > *{min-width:0}

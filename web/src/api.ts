@@ -30,5 +30,6 @@ export type GameSummary = { id: string; white: string; black: string; whiteRatin
 export type Move = { ply: number; san: string; uci: string; fenBefore: string; fenAfter: string; side: string; clockSeconds: number | null };
 export type Game = GameSummary & { initialFen: string; moves: Move[]; rawPgn: string; termination: string | null };
 export type Page<T> = { items: T[]; total: number; page: number; pageSize: number };
-export type Job = { id: string; state: string; imported: number; duplicates: number; processed: number; total: number; failures: { gameNumber: number; message: string }[]; error: string | null; version: number; cancelRequested: boolean };
+export type ProviderRequest = { provider: 'chesscom' | 'lichess'; username: string; from: string; to: string; maxGames: number };
+export type Job = { id: string; source: string; state: string; phase: string; imported: number; duplicates: number; processed: number; total: number; failures: { gameNumber: number; message: string }[]; error: string | null; version: number; cancelRequested: boolean; nextAttemptAt: string | null; request: ProviderRequest | null };
 export type Position = { fen: string; sideToMove: string; legalMoves: string[]; endgame: string | null };

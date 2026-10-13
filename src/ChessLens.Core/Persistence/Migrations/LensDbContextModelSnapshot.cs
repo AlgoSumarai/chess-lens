@@ -146,6 +146,9 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.Property<int>("Attempts")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("CancelRequested")
                         .HasColumnType("boolean");
 
@@ -206,11 +209,65 @@ namespace ChessLens.Core.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BatchId");
+
                     b.HasIndex("State", "LeaseUntil");
 
                     b.HasIndex("OwnerId", "GameId", "CreatedAt");
 
                     b.ToTable("AnalysisRuns");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Analysis.ImportAnalysisBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CancelRequested")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ImportJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Profile")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ReusedReviews")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RunIdsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ImportJobId");
+
+                    b.HasIndex("State", "UpdatedAt");
+
+                    b.HasIndex("OwnerId", "ImportJobId", "Profile")
+                        .IsUnique();
+
+                    b.ToTable("ImportAnalysisBatches");
                 });
 
             modelBuilder.Entity("ChessLens.Core.Analysis.MoveAnalysis", b =>
@@ -461,6 +518,9 @@ namespace ChessLens.Core.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("HeadersJson")
                         .IsRequired()
                         .HasColumnType("text");
@@ -482,6 +542,12 @@ namespace ChessLens.Core.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool?>("Rated")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RatingPool")
+                        .HasColumnType("text");
+
                     b.Property<string>("RawPgn")
                         .IsRequired()
                         .HasColumnType("text");
@@ -489,6 +555,9 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.Property<string>("Result")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Termination")
                         .HasColumnType("text");
@@ -554,6 +623,9 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.Property<bool>("CancelRequested")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("CheckpointJson")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -576,11 +648,18 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.Property<DateTimeOffset?>("LeaseUntil")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("OwnerId")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phase")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -612,6 +691,43 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.HasIndex("State", "LeaseUntil");
 
                     b.ToTable("ImportJobs");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Imports.ImportJobGame", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("JobId", "GameId");
+
+                    b.HasIndex("JobId", "Ordinal");
+
+                    b.HasIndex("OwnerId", "GameId");
+
+                    b.ToTable("ImportJobGames");
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Imports.ProviderThrottle", b =>
+                {
+                    b.Property<string>("Provider")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("NotBefore")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Provider");
+
+                    b.ToTable("ProviderThrottles");
                 });
 
             modelBuilder.Entity("ChessLens.Core.Insights.InsightSnapshot", b =>
@@ -948,9 +1064,23 @@ namespace ChessLens.Core.Persistence.Migrations
 
             modelBuilder.Entity("ChessLens.Core.Analysis.AnalysisRun", b =>
                 {
+                    b.HasOne("ChessLens.Core.Analysis.ImportAnalysisBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("ChessLens.Core.Games.UserGame", null)
                         .WithMany()
                         .HasForeignKey("OwnerId", "GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Analysis.ImportAnalysisBatch", b =>
+                {
+                    b.HasOne("ChessLens.Core.Imports.ImportJob", null)
+                        .WithMany()
+                        .HasForeignKey("ImportJobId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1013,6 +1143,21 @@ namespace ChessLens.Core.Persistence.Migrations
                     b.HasOne("ChessLens.Core.Accounts.AppUser", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ChessLens.Core.Imports.ImportJobGame", b =>
+                {
+                    b.HasOne("ChessLens.Core.Imports.ImportJob", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ChessLens.Core.Games.UserGame", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId", "GameId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -18,7 +18,7 @@ public static class AnalysisEndpoints
             if (!await db.UserGames.AnyAsync(g => g.GameId == id && g.OwnerId == owner, ct)) return Results.NotFound();
             var run = await db.AnalysisRuns.AsNoTracking().Include(r => r.Moves).Where(r => r.OwnerId == owner && r.GameId == id)
                 .OrderByDescending(r => r.CreatedAt).FirstOrDefaultAsync(ct);
-            return Results.Json(run is null ? null : View(run));
+            return run is null ? Results.Text("null", "application/json") : Results.Ok(View(run));
         });
         api.MapGet("/analysis/{id:guid}", async (Guid id, ClaimsPrincipal user, LensDbContext db, CancellationToken ct) =>
         {
@@ -42,7 +42,7 @@ public static class AnalysisEndpoints
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({owner}, 0))", ct);
         var game = await db.UserGames.AsNoTracking().Where(g => g.OwnerId == owner && g.GameId == id).Select(g => new { plies = g.Game.Moves.Count }).SingleOrDefaultAsync(ct);
         if (game is null) return Results.NotFound();
-        var active = await db.AnalysisRuns.FirstOrDefaultAsync(r => r.OwnerId == owner && r.GameId == id && (r.State == "queued" || r.State == "running"), ct);
+        var active = await db.AnalysisRuns.FirstOrDefaultAsync(r => r.OwnerId == owner && r.GameId == id && (r.State == "waiting" || r.State == "queued" || r.State == "running"), ct);
         if (active is not null) return Results.Accepted($"/api/analysis/{active.Id}", View(active));
         if (await db.AnalysisRuns.CountAsync(r => r.OwnerId == owner && (r.State == "queued" || r.State == "running"), ct) >= 3)
             return Results.Problem(statusCode: 429, title: "Analysis queue is full", detail: "Wait for a review to complete or cancel an active one.");

@@ -5,6 +5,7 @@ public sealed class AnalysisRun
     public Guid Id { get; set; } = Guid.NewGuid();
     public required string OwnerId { get; set; }
     public Guid GameId { get; set; }
+    public Guid? BatchId { get; set; }
     public string Profile { get; set; } = "quick";
     public string AnalysisVersion { get; set; } = "chesslens-analysis-v3";
     public string? ClassificationSettingsJson { get; set; }

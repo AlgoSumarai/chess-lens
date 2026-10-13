@@ -11,6 +11,8 @@ builder.Services.AddDbContext<LensDbContext>(o => o.UseNpgsql(builder.Configurat
     ?? throw new InvalidOperationException("ConnectionStrings__Database is required.")));
 builder.Services.AddSingleton<PgnReader>();
 builder.Services.AddScoped<ImportProcessor>();
+builder.Services.AddSingleton<IProviderHttpClient, ProviderHttpClient>();
+builder.Services.AddScoped<ProviderImportProcessor>();
 builder.Services.Configure<EngineOptions>(builder.Configuration.GetSection("Stockfish"));
 builder.Services.AddOptions<AnalysisOptions>().Bind(builder.Configuration.GetSection("Analysis"))
     .Validate(o => o.InaccuracyCentipawns >= 1 && o.MistakeCentipawns > o.InaccuracyCentipawns &&
@@ -18,6 +20,7 @@ builder.Services.AddOptions<AnalysisOptions>().Bind(builder.Configuration.GetSec
     .ValidateOnStart();
 builder.Services.AddSingleton<IChessEngine, EnginePool>();
 builder.Services.AddScoped<AnalysisProcessor>();
+builder.Services.AddScoped<ImportBatchProcessor>();
 builder.Services.AddScoped<InsightProcessor>();
 builder.Services.AddScoped<PuzzleProcessor>();
 builder.Services.AddHostedService<ImportWorker>();

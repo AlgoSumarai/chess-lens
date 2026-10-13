@@ -31,7 +31,7 @@ public static class InsightEndpoints
         api.MapGet("", async (ClaimsPrincipal user, LensDbContext db, CancellationToken ct) =>
         {
             var job = await db.InsightSnapshots.AsNoTracking().Where(j => j.OwnerId == user.Owner()).OrderByDescending(j => j.CreatedAt).FirstOrDefaultAsync(ct);
-            return Results.Json(job is null ? null : View(job));
+            return job is null ? Results.Text("null", "application/json") : Results.Ok(View(job));
         });
         api.MapGet("/{id:guid}", async (Guid id, ClaimsPrincipal user, LensDbContext db, CancellationToken ct) =>
         {

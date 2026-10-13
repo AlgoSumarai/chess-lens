@@ -97,6 +97,7 @@ app.MapInsights();
 app.MapPuzzles();
 app.MapHub<ProgressHub>("/hubs/progress").RequireAuthorization();
 app.MapGames();
+app.MapImportBatches();
 app.Run();
 
 public partial class Program;

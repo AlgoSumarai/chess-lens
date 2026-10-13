@@ -12,9 +12,15 @@ Requests and responses use camelCase JSON. Authentication uses an HttpOnly `ches
 | PUT `/api/account/preferences` | `{timezone,coachingLevel,preferredTimeControls}`. |
 | DELETE `/api/account/data` | Deletes the owner's associations, jobs and derived records; removes source games with no remaining owner. |
 | POST `/api/imports/pgn` | `{pgn,playerName?,maxGames:50}`. Raw UTF-8 PGN <=5MB; 1–200 selected games; <=1,000 plies/game. Returns 202 with job ID and Location. |
+| POST `/api/imports/provider` | `{provider:"chesscom"\|"lichess",username,from,to,maxGames:50}`. Public completed-game import; inclusive/exclusive UTC dates <=366 days, 1–200 games. Returns 202/job; identical active requests reuse it. |
+| GET `/api/imports/profiles` | Owner-scoped imported public profiles and `ownershipVerified:false`. |
 | GET `/api/jobs` | Latest 30 owner-scoped import jobs, including progress/version and per-game errors. |
 | GET `/api/jobs/{id}` | Authoritative owner-scoped import state. |
 | POST `/api/jobs/{id}/cancel` | Requests cancellation; already committed valid games remain. |
+| POST `/api/jobs/{id}/analysis` | `{profile:"quick"\|"deep",maximumGames:10}`. Reserves 1–20 saved batch games under the daily half-move budget; returns 202/batch. Repeated import/profile requests reuse it. |
+| GET `/api/jobs/{id}/analysis` | Latest saved batch for the owned import, or JSON `null`. |
+| GET `/api/analysis-batches/{id}` | Owner-scoped counts, per-run saved states/links, reused-review count, version and cancellation state. |
+| POST `/api/analysis-batches/{id}/cancel` | Cancels the new remaining reviews belonging to this batch; does not cancel reused reviews. |
 | GET `/api/games` | `page`, `source`, `colour`, `opening`, `timeControl`, `from`, `to`. 20 rows/page and total denominator. Date upper bound is exclusive. |
 | GET `/api/games/{id}` | Immutable source metadata/PGN/mainline and the owner's selected player colour. |
 | PUT `/api/games/{id}/identity` | `{colour:"white"|"black"}`. Public profile names are never proof of ownership. |
@@ -36,7 +42,7 @@ Requests and responses use camelCase JSON. Authentication uses an HttpOnly `ches
 
 Endpoint: `/hubs/progress`. Cookie-authenticated connections join only their server-derived owner group. `SubscribeJob(id)` checks ownership and cannot grant cross-owner access. Browser origins are validated against `AllowedOrigins`.
 
-Event `jobProgress`: `{kind:"import"|"analysis"|"position"|"insights"|"puzzle",id,version,gameId?,state}`. Import state includes counts and per-game failures. Analysis state includes run counts and the latest completed move result; position state includes the exact selected FEN, sequence and candidate results when complete. Insight and puzzle notifications contain their saved state name; fetch the HTTP resource for details. Events are hints: clients fetch authoritative HTTP state on connection, reconnection and notifications, retain the greatest version, ignore stale/duplicate events and periodically reconcile if the stream is unavailable. No correctness depends on uninterrupted delivery.
+Event `jobProgress`: `{kind:"import"|"analysis"|"position"|"insights"|"puzzle"|"batch",id,version,gameId?,state}`. Import state includes counts and per-game failures. Analysis state includes run counts and the latest completed move result; position state includes the exact selected FEN, sequence and candidate results when complete. Insight and puzzle notifications contain their saved state name; fetch the HTTP resource for details. Events are hints: clients fetch authoritative HTTP state on connection, reconnection and notifications, retain the greatest version, ignore stale/duplicate events and periodically reconcile if the stream is unavailable. No correctness depends on uninterrupted delivery.
 
 Every score is `{kind:"cp"|"mate",value}` from the recorded moving player's perspective. The frontend flips the sign only for its explicitly labelled White-perspective graph. Mate distances are not converted to centipawns. Every result preserves effective engine/settings, search budget, depth, nodes, legal PV and analysis version in persistence. Engine startup has a configurable `Stockfish:StartupTimeoutSeconds` bound of 5–120 seconds (default 120 to accommodate cold container starts); analysis leases last five minutes, exceeding a startup plus the bounded verification search pair.
 
@@ -46,7 +52,7 @@ Current quotas: three active imports and 20 import submissions per owner/day; th
 
 PGN duplicate fingerprints v1 combine normalized mainline UCI moves, starting FEN, result and sorted source tags, excluding `Annotator`/`PlyCount`. Distinguishing metadata preserves separate games with the same moves. Variations/comments are preserved in raw PGN but do not alter the fingerprint. Available clocks are parsed from mainline `[%clk H:MM:SS]` comments; absent/invalid clocks remain null. Date-only values are stored at UTC midnight for date filtering; their original precision and tags remain in the immutable source. Unclosed lexical structures are resynchronized at the next line-start Event/White/Site tag and reported per game where possible.
 
-Provider, mistake-practice, model-coaching and report contracts will be added with their implemented milestones. Insight selection, evidence, configurable thresholds, confidence labels and denominator rules are documented in [analytics-rules.md](analytics-rules.md). Puzzle contracts are below.
+Provider requests, caching, checkpoints, source identity and batch budgets are documented in [provider-imports.md](provider-imports.md). Mistake-practice, model-coaching and report contracts will be added with their implemented milestones. Insight selection, evidence, configurable thresholds, confidence labels and denominator rules are documented in [analytics-rules.md](analytics-rules.md). Puzzle contracts are below.
 
 ## Classification settings and cache compatibility
 

@@ -13,12 +13,12 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
         Guid id;
         await using (var tx = await db.Database.BeginTransactionAsync(ct))
         {
-            await db.ImportJobs.Where(j => j.State == "running" && j.LeaseUntil < DateTimeOffset.UtcNow && j.Attempts >= 4)
+            await db.ImportJobs.Where(j => j.Source == "pgn" && j.State == "running" && j.LeaseUntil < DateTimeOffset.UtcNow && j.Attempts >= 4)
                 .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, "failed").SetProperty(j => j.Error, "Import stopped after four interrupted attempts.")
                     .SetProperty(j => j.Version, j => j.Version + 1).SetProperty(j => j.UpdatedAt, DateTimeOffset.UtcNow), ct);
             var job = await db.ImportJobs.FromSqlRaw("""
                 SELECT * FROM "ImportJobs"
-                WHERE ("State" = 'queued' OR ("State" = 'running' AND "LeaseUntil" < now()))
+                WHERE "Source" = 'pgn' AND ("State" = 'queued' OR ("State" = 'running' AND "LeaseUntil" < now()))
                 AND "Attempts" < 4 ORDER BY "CreatedAt" LIMIT 1 FOR UPDATE SKIP LOCKED
                 """).ToListAsync(ct);
             var claimed = job.SingleOrDefault();
@@ -50,6 +50,7 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
                 if (job.CancelRequested || job.Processed >= batch.Count)
                 {
                     job.State = job.CancelRequested ? "cancelled" : "completed";
+                    job.Phase = "finished";
                     job.PayloadJson = "{}";
                     job.LeaseUntil = null;
                     Touch(job);
@@ -67,16 +68,7 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader)
                 }
                 if (parsed is not null)
                 {
-                    await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({parsed.Fingerprint}, 0))", ct);
-                    var existing = await db.Games.SingleOrDefaultAsync(g => g.Fingerprint == parsed.Fingerprint, ct);
-                    var game = existing ?? parsed;
-                    if (existing is null) db.Games.Add(game);
-                    if (await db.UserGames.AnyAsync(g => g.OwnerId == job.OwnerId && g.GameId == game.Id, ct)) job.Duplicates++;
-                    else
-                    {
-                        db.UserGames.Add(new UserGame { OwnerId = job.OwnerId, GameId = game.Id, PlayerColour = PgnReader.Identify(game, payload.PlayerName) });
-                        job.Imported++;
-                    }
+                    await ImportStore.Save(db, job, parsed, payload.PlayerName, ct);
                 }
                 job.Processed++;
                 job.LeaseUntil = DateTimeOffset.UtcNow.AddMinutes(2);

@@ -1,0 +1,73 @@
+# Acceptance matrix
+
+Authoritative scope: [build brief](build-brief.md) and [the original goal requirements](goal-requirements.md). Baseline: clean `main`, `42648a584d62482bac0651438f0f36dd617863c3`, inspected 13 October 2026. No applicable `AGENTS.md` was found. Implementation locations below are relative to `src/` unless otherwise stated. A feature being present is not a passing acceptance gate. Historical September claims remain historical until rerun.
+
+Statuses: **Required**, **Implemented; revalidate**, **Verified** (with specified evidence), or **Open external gate**. A fixture is never substituted for a live integration, actual process recovery, benchmark or manual accessibility inspection. Final acceptance requires every row verified and the independent review threshold met within three rounds.
+
+| ID | Requirement / acceptance | Implementation location | Check | Evidence | Status |
+| --- | --- | --- | --- | --- | --- |
+| BASE-01 | Inspect baseline, preserve user changes and source data | Repository; docs/goal-requirements.md | git status/branch/rev-parse; migration upgrade | Clean main at 42648a5; no AGENTS.md found | Baseline inspected; upgrade open |
+| ACC-01 | Accounts, sessions, protected routes, preferences | Api/AccountsEndpoints.cs; Core/Accounts | AccountImportTests; desktop/mobile registration | Fresh baseline pending | Implemented; revalidate |
+| ACC-02 | Identity selection, unverified profiles, demo isolation | Api/GameEndpoints.cs; DemoEndpoints.cs | Mixed/ambiguous PGNs; two isolated demo users | Fresh baseline pending | Implemented; extend profiles |
+| ACC-03 | Delete all owned data and prevent late resurrection | AccountsEndpoints.cs; cascading FKs | Deletion during every job type; cross-owner tests | Fresh baseline pending | Extend for new entities |
+| IMP-01 | Legal single/multiple PGN, variations, special moves/custom FEN, mixed errors | Core/Imports/PgnReader.cs; Core/Games/ChessRules.cs | PgnTests; mixed imports | Fresh baseline pending | Implemented; revalidate |
+| IMP-02 | Public completed Chess.com imports; current official contract | Core/Imports; Api/GameEndpoints.cs | Contract fixtures; bounded real import/resync | Official contract + two-game live import/resync; verification 2026-10-13 | Implemented; slice verified |
+| IMP-03 | Public completed Lichess streaming exports; current official contract | Core/Imports; Api/GameEndpoints.cs | Streaming contract fixtures; real import/resync | Official API/spec inspected 2026-10-13 | Required |
+| IMP-04 | Username, UTC dates, bounded count; metadata/clocks/ratings/unknowns/variants | Core/Imports; Core/Games/Models.cs | Missing fields; variant; date/count boundaries | 81 backend cases + live imports + serialized 10 browser journeys; docs/verification.md | Implemented; slice verified |
+| IMP-05 | Compatible HTTP caching, serial rate limits, timeouts/backoff, cancellation/checkpoints | Core/Imports; Worker | 304/max-age/429/retry/cancel/restart fixtures + real checks | 81 backend cases + live imports + serialized 10 browser journeys; docs/verification.md | Implemented; slice verified |
+| IMP-06 | Concurrent duplicate delivery; immutable sources under changed annotations | Imports; Persistence constraints | Concurrent import/resync; same ID changed annotations | 81 backend cases + live imports + serialized 10 browser journeys; docs/verification.md | Implemented; slice verified |
+| IMP-07 | Allowlisted endpoints; usernames/returned URLs cannot drive arbitrary fetches | Provider transport | Malicious usernames/archive URLs/redirects | 81 backend cases + live imports + serialized 10 browser journeys; docs/verification.md | Implemented; slice verified |
+| IMP-08 | Bounded batch analysis, progress, retry and recovery | Import batch API/worker/UI | Batch progress; quota; recovery journey | 81 backend cases + live imports + serialized 10 browser journeys; docs/verification.md | Implemented; slice verified |
+| ENG-01 | Durable mainline review, persisted per-ply engine/search/evaluation evidence | Core/Analysis | AnalysisPipelineTests + real engine browser | Fresh baseline pending | Implemented; revalidate |
+| ENG-02 | White/Black normalization, mate transitions, comparable settings/stability | Analysis models/processor | EngineTests; AnalysisPipelineTests | Fresh baseline pending | Implemented; revalidate |
+| ENG-03 | Full draw history; cache compatibility/versioning/classification snapshots | Analysis/UciEngine.cs; ChessRules.cs | Repetition/50-move/cache/MultiPV/partial resume tests | Fresh baseline pending | Implemented; revalidate |
+| ENG-04 | Quick/deep profiles, provisional labels, pool/time/memory/thread bounds | Analysis/EnginePool.cs; UI | Real cancellation/crash/leak tests; benchmark | Fresh baseline pending | Implemented; release evidence open |
+| INS-01 | Four core weakness detectors, verified legal evidence and conservative motifs | Core/Insights | InsightRulesTests + representative real engine | Fresh baseline pending | Implemented; revalidate |
+| INS-02 | Denominators, no overlap double counts, sparse/confidence/clock coverage | Insights; docs/analytics-rules.md | Positive/negative/sparse/missing clocks/increments fixtures | Fresh baseline pending | Implemented; revalidate |
+| INS-03 | Conversion thresholds, persistence and eligible objectives defined first | Insights; analytics-rules.md | Positive/negative/boundary/mate transitions/real checks | Pending | Required |
+| INS-04 | Endgame eligibility and errors with stable full-history evidence | Insights; analytics-rules.md | Positive/negative/sparse/boundary/real checks | Pending | Required |
+| INS-05 | Frozen version/settings/evidence snapshots; exact saved run links/groups | Insights/InsightSnapshots.cs; web/Weaknesses.tsx | Identity/settings/reanalysis freeze; exact position journey | Fresh baseline pending | Implemented; extend rules |
+| PUZ-01 | Stable personal short mates/material puzzles, legal alternatives/defences | Core/Training/PuzzleValidator.cs | PuzzleValidatorTests; real Stockfish | Fresh baseline pending | Implemented; revalidate |
+| PUZ-02 | Hidden answers, progressive hints, attempts, playback, original evidence | PuzzleEndpoints.cs; web/Puzzles.tsx | PuzzlePipelineTests; desktop/mobile solving | Fresh baseline pending | Implemented; revalidate |
+| PUZ-03 | Spaced review, elapsed/outcome/assistance/difficulty limits | PuzzleModels.cs; docs/puzzle-rules.md | Persisted intervals; stale/duplicate attempts | Fresh baseline pending | Implemented; revalidate |
+| COA-01 | Server provider abstraction; useful no-key beginner/intermediate/advanced explanations | Core/Coaching; web review | No-key tests and journey; level distinctions | Pending | Required |
+| COA-02 | Provider/time-control ratings distinct and evidence-grounded legal continuation/lesson | Coaching contracts/cache | Ratings separation; exact run/ply/history validation | Pending | Required |
+| COA-03 | Models explain only verified facts; generic motif unless legally proven | Coaching validation | Injection; illegal moves; unrelated/stale/motif claims | Pending | Required |
+| COA-04 | Structured output validation; credentials/timeouts/failures factual fallback | Coaching provider | Invalid JSON/provider failure/timeout/no key tests | Pending | Required |
+| COA-05 | Secrets server-side; minimal data, bounded cost/requests, compatible cache/provenance | Coaching persistence/options | Budgets; concurrent cache; prompt/model/evidence versions | Pending | Required |
+| PRA-01 | Persistent mistake session, original colour, concrete objective, practical opponent | Core/Training; Api; web practice | Real imported mistake + engine opponent journey | Pending | Required |
+| PRA-02 | Every move legal using source+practice history; promotion/draw/terminal states | Practice domain | Promotion/full repetition/50-move/stalemate fixtures | Pending | Required |
+| PRA-03 | Retry/undo/hints/reload/resume/review; hidden answers and assistance tracking | Practice API/UI | Stale/concurrent commands; assisted vs unassisted outcomes | Pending | Required |
+| PRA-04 | Bounded objective grading at full strength with alternatives/evidence | Practice grading; documented rules | Non-prescribed sound move; objective horizon; real engine | Pending | Required |
+| PRA-05 | Durable engine jobs/quotas/cancel/stale barrier/version/source links | Practice processor/persistence | Restart/deletion/cancel/late results + existing puzzles | Pending | Required |
+| REP-01 | Completed local-calendar weeks, timezone/DST/missing dates/empty/activity rules | Core/Reports; docs/report-rules.md | DST/week/timezone-change/date fixtures | Pending | Required |
+| REP-02 | Durable scheduler + on-demand; concurrent idempotence and immutable revisions | Reports persistence/worker/API | Repeated scheduled/manual generation; reanalysis freeze | Pending | Required |
+| REP-03 | Games/WDL/coverage/weaknesses/positions/training/plan/comparable prior interval | Report snapshot builder/UI | Frozen evidence and supported/insufficient comparisons | Pending | Required |
+| PRO-01 | Date/source/colour/opening/exact and grouped time-control filters | Progress API/UI | Every filter; unknown metadata; accessible controls | Pending | Required |
+| PRO-02 | Denominators, compatible rates, rating pools/trends, training outcomes | Progress rules/API/UI | Settings/providers/coverage/sparse separations | Pending | Required |
+| UI-01 | Connected import → analyse → understand → practise → measure journey | web screens/routing/dashboard | Final Compose desktop/mobile full journey | Pending | Required |
+| UI-02 | Board/notation/graph/evidence/coaching synchronization incl variation/reload/rapid changes | GameReview; coaching hooks | Components + browser stale request tests | Fresh baseline pending | Implemented; extend coaching |
+| UI-03 | Warm board/dark surfaces; clear recommendation/plain confidence/exact decisions | web styles/dashboard/findings | Manual whole journey and independent review | Pending | Required |
+| UI-04 | Actionable loading/empty/partial/cancel/fail/retry and no-key/provider failures | All web screens | Failure journeys; retry/recovery; demo labels | Pending | Required |
+| A11Y-01 | Desktop/mobile small viewport, long data, touch/promotions/candidates/200% zoom/no overflow | web UI | Playwright content/client width + visual inspection | Pending | Required |
+| A11Y-02 | Focus/keyboard/text input/labels/status/contrast/reduced motion/non-colour classifications | web UI | Automated axe + manual keyboard/assistive inspection | Pending | Required |
+| SEC-01 | Owner isolation, CSRF, SignalR authorization on all operations | Api/Program.cs; endpoints; ProgressHub.cs | Two-user HTTP/SignalR; missing CSRF | Fresh baseline pending | Implemented; extend |
+| SEC-02 | Global/per-owner provider/engine/model quotas and bounded resources | Processors/options/API | Concurrent quota tests; mixed-workload checks | Pending | Required |
+| REL-01 | No starvation across imports/review/insights/puzzle/practice/reports | Worker scheduling | Mixed queue workload progress evidence | Pending | Required |
+| REL-02 | OS/process kill/restart, repeated delivery/lease exhaustion/engine failure | Worker/engine/scheduler | Isolated actual process experiments; persisted state/leak checks | Pending | Required |
+| REL-03 | Reconnect/missed notifications; database interruption/recovery | SignalR/worker/database | Actual reconnect and DB interruption experiment | Pending | Required |
+| REL-04 | Structured safe correlation/job/error/timing logs; service readiness | API/worker logging/health | Health probes + secret-free log inspection | Pending | Required |
+| OPS-01 | Clean startup Windows 11 and Linux/WSL; locked dependencies and copy-data migration | README/scripts/Compose | Clean checkout build/start; migration existing copy | Pending | Required |
+| OPS-02 | Reproducible CI; official dependency/security checks, justified compatible updates | CI; locks; dependencies.md | CI commands + official advisory/audit results | Pending | Required |
+| OPS-03 | x86-64 and ARM64 exact engine packaging/builds verified; honest matrix | Dockerfile/engine scripts | Both binaries/UCI/container checks or gate open | Pending | Required |
+| OPS-04 | HTTPS/trusted proxy/secure cookies/origin/config/persistent keys/secrets examples | Production Compose/API/nginx/docs | Local HTTPS/proxy cookie/origin/readiness validation | Pending | Required |
+| OPS-05 | Backup/real restore isolated database and verified records | Backup/restore scripts/docs | Dump/restore + data integrity checks | Pending | Required |
+| LIC-01 | Applicable licence texts; board/opening provenance; exact Stockfish source/build materials | THIRD_PARTY_NOTICES; licences; engine archive | Inventory licence verification; source/binary hashes | Pending | Required |
+| OPS-06 | Release image digests and reproducible local release | Release scripts/docs | Built images/digests; local release startup | Pending | Required |
+| BEN-01 | Hardware/settings/profiles/games/plies/concurrency/time/peak CPU/memory/responsiveness | Benchmark script/report | Measured repeatable workload; disclosed limits | Pending | Required |
+| VER-01 | Fresh full backend/components/build/real engine/browser against final Compose | Tests; verification.md | Commands/date/commit/counts/artifacts/failures/skips | Baseline running | Required |
+| VER-02 | Acceptance matrix covers brief + expanded scope with honest fixture/live/manual distinctions | This matrix; verification.md | All rows have fresh evidence before release | Pending | Required |
+| REV-01 | Independent engineering/UI review at most 3 rounds; weighted score ≥8, every dimension ≥8 | docs/quality-review.md | Separate non-author agent; code/test/actual desktop/mobile evidence | 0 rounds used | Required |
+| REV-02 | No unresolved critical/high defect; all gates; fixes/rechecks without resetting rounds | quality-review.md; acceptance matrix | Dated commit and rounds; missing evidence explicit | Pending | Required |
+| HAN-01 | Source/migrations/config/docs/README/API/rules/licences/release/demo script | Repository/docs | Reproducible handover + short completed coaching-loop demonstration | Pending | Required |
+| BOUND-01 | Completed-game personal training only; no paid costs/provisioning/public deployment | All integration/UI/release work | Review endpoints and output; no paid model calls | Authorized local scope only | Ongoing constraint |

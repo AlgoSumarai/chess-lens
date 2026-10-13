@@ -3,6 +3,7 @@ using System.Text.Json;
 using ChessLens.Core.Games;
 using ChessLens.Core.Imports;
 using ChessLens.Core.Persistence;
+using ChessLens.Core.Accounts;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChessLens.Api;
@@ -13,6 +14,10 @@ public static class GameEndpoints
     {
         var api = app.MapGroup("/api").RequireAuthorization().RequireRateLimiting("api");
         api.MapPost("/imports/pgn", Import);
+        api.MapPost("/imports/provider", ProviderImport);
+        api.MapGet("/imports/profiles", async (ClaimsPrincipal user, LensDbContext db, CancellationToken ct) =>
+            Results.Ok(await db.ImportedProfiles.AsNoTracking().Where(p => p.OwnerId == user.Owner())
+                .OrderBy(p => p.Provider).ThenBy(p => p.Username).Select(p => new { p.Provider, p.Username, p.OwnershipVerified }).ToListAsync(ct)));
         api.MapGet("/jobs", async (ClaimsPrincipal user, LensDbContext db, CancellationToken ct) =>
         {
             var jobs = await db.ImportJobs.AsNoTracking().Where(j => j.OwnerId == user.Owner()).OrderByDescending(j => j.CreatedAt).Take(30).ToListAsync(ct);
@@ -26,7 +31,8 @@ public static class GameEndpoints
         api.MapPost("/jobs/{id:guid}/cancel", async (Guid id, ClaimsPrincipal user, LensDbContext db, CancellationToken ct) =>
         {
             var count = await db.ImportJobs.Where(j => j.Id == id && j.OwnerId == user.Owner() && (j.State == "queued" || j.State == "running"))
-                .ExecuteUpdateAsync(s => s.SetProperty(j => j.CancelRequested, true).SetProperty(j => j.Version, j => j.Version + 1), ct);
+                .ExecuteUpdateAsync(s => s.SetProperty(j => j.CancelRequested, true).SetProperty(j => j.Version, j => j.Version + 1)
+                    .SetProperty(j => j.UpdatedAt, DateTimeOffset.UtcNow), ct);
             return count == 0 ? Results.NotFound() : Results.Accepted($"/api/jobs/{id}");
         });
         api.MapGet("/games", Library);
@@ -51,6 +57,27 @@ public static class GameEndpoints
         db.ImportJobs.Add(job);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+        return Results.Accepted($"/api/jobs/{job.Id}", JobView(job));
+    }
+
+    private static async Task<IResult> ProviderImport(ProviderImportRequest input, ClaimsPrincipal principal, LensDbContext db, CancellationToken ct)
+    {
+        input = input.Normalized(); input.Validate();
+        var owner = principal.Owner();
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({owner}, 0))", ct);
+        var payload = JsonSerializer.Serialize(input);
+        var active = await db.ImportJobs.SingleOrDefaultAsync(j => j.OwnerId == owner && j.Source == input.Provider && j.PayloadJson == payload &&
+            (j.State == "queued" || j.State == "running"), ct);
+        if (active is not null) return Results.Accepted($"/api/jobs/{active.Id}", JobView(active));
+        if (await db.ImportJobs.CountAsync(j => j.OwnerId == owner && (j.State == "queued" || j.State == "running"), ct) >= 3 ||
+            await db.ImportJobs.CountAsync(j => j.OwnerId == owner && j.CreatedAt > DateTimeOffset.UtcNow.AddDays(-1), ct) >= 20)
+            return Results.Problem(statusCode: 429, title: "Import limit reached", detail: "Imports are limited to three active batches and 20 new batches per day. Wait or cancel an active batch.");
+        if (!await db.ImportedProfiles.AnyAsync(p => p.OwnerId == owner && p.Provider == input.Provider && p.Username == input.Username, ct))
+            db.ImportedProfiles.Add(new ImportedProfile { OwnerId = owner, Provider = input.Provider, Username = input.Username });
+        var job = new ImportJob { OwnerId = owner, Source = input.Provider, PayloadJson = payload, Phase = "fetching" };
+        db.ImportJobs.Add(job);
+        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
         return Results.Accepted($"/api/jobs/{job.Id}", JobView(job));
     }
 
@@ -79,7 +106,7 @@ public static class GameEndpoints
         if (association is null) return Results.NotFound();
         var game = association.Game;
         return Results.Ok(new { game.Id, association.PlayerColour, game.White, game.Black, game.WhiteRating, game.BlackRating, game.Result,
-            game.PlayedAt, game.Provider, game.Url, game.Termination, game.TimeControl, game.Opening, game.Eco, game.RawPgn, game.InitialFen,
+            game.PlayedAt, game.StartedAt, game.FinishedAt, game.Provider, game.Url, game.RatingPool, game.Rated, game.Termination, game.TimeControl, game.Opening, game.Eco, game.RawPgn, game.InitialFen,
             moves = game.Moves.OrderBy(m => m.Ply) });
     }
 
@@ -103,7 +130,9 @@ public static class GameEndpoints
     }
 
     public static object JobView(ImportJob j) => new { j.Id, j.Source, j.State, j.Imported, j.Duplicates, j.Processed, j.Total,
-        failures = JsonSerializer.Deserialize<ImportFailure[]>(j.FailuresJson), j.Error, j.Version, j.CancelRequested, j.CreatedAt, j.UpdatedAt };
+        failures = JsonSerializer.Deserialize<ImportFailure[]>(j.FailuresJson), j.Error, j.Version, j.CancelRequested, j.Phase,
+        j.NextAttemptAt, j.CreatedAt, j.UpdatedAt,
+        request = j.Source == "pgn" ? null : JsonSerializer.Deserialize<ProviderImportRequest>(j.PayloadJson) };
 }
 
 public sealed record IdentityRequest(string Colour);

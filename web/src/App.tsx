@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { api, refreshCsrf, send, type GameSummary, type Job, type Page, type User } from './api';
+import { api, refreshCsrf, send, type GameSummary, type Page, type User } from './api';
 import { useRemote, useRoute } from './hooks';
 import { GameReview } from './GameReview';
 import { Weaknesses, type InsightSnapshot } from './Weaknesses';
 import { PuzzleLibrary, PuzzlePage, PuzzleAttemptPage } from './Puzzles';
+import { ImportPage, AnalysisBatchPage } from './Imports';
 
 export function ErrorNotice({ message, retry }: { message: string; retry?: () => void }) {
   return message ? <div className="error" role="alert">{message}{retry && <button onClick={retry}>Retry</button>}</div> : null;
@@ -82,7 +83,8 @@ export function App() {
         { 
           route === '/' ? <Dashboard /> :
           route === '/games' ? <Library /> : 
-          route === '/import' ? <Import /> : 
+          route === '/import' ? <ImportPage /> :
+          routePath.startsWith('/analysis-batches/') ? <AnalysisBatchPage id={routePath.split('/')[2]} key={route} /> :
           route === '/weaknesses' ? <Weaknesses /> : 
           route === '/puzzles' ? <PuzzleLibrary /> : 
           routePath.startsWith('/puzzles/attempts/') ? <PuzzleAttemptPage id={routePath.split('/')[3]} key={route} /> : 
@@ -278,103 +280,6 @@ function Library() {
         <span>Page {page} of {Math.ceil(data.total / 20)}</span>
         <button disabled={page * 20 >= data.total} onClick={() => setPage(page + 1)}>Next</button>
       </div>
-    }
-  </>;
-}
-
-function Import() {
-  const [pgn, setPgn] = useState(''); 
-  const [busy, setBusy] = useState(false); 
-  const [error, setError] = useState('');
-  const { data: jobs, error: jobsError, reload } = useRemote<Job[]>('/jobs', 2500);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); 
-    setBusy(true); setError(''); 
-    const form = new FormData(event.currentTarget);
-    try { 
-      await send<Job>('/imports/pgn', { pgn, 
-        playerName: form.get('playerName') || null, maxGames: Number(form.get('maxGames')) }); 
-        reload(); 
-      } catch (e) { setError((e as Error).message); 
-      } finally { setBusy(false); }
-  };
-
-  const file = async (f?: File) => { 
-    if (!f) return; 
-    if (f.size > 5 * 1024 * 1024) { 
-      setError('Choose a PGN file smaller than 5 MB.'); 
-      return; 
-    } 
-    setPgn(await f.text()); 
-    setError(''); 
-    };
-
-  return <>
-    <div className="page-heading compact">
-      <div>
-        <p className="eyebrow">BRING YOUR OWN POSITIONS</p>
-        <h1>Import your games</h1>
-        <p>Completed games, ready for a closer look.</p>
-      </div>
-    </div>
-    <div className="import-grid">
-      <Panel>
-        <h2>Upload a PGN</h2>
-        <p>Single games or a collection. Up to 5 MB per import.</p>
-        <form onSubmit={submit}>
-          <label className="file-drop">
-            <span aria-hidden="true">⇧</span>
-            <strong>Choose a PGN file</strong>
-            <input type="file" accept=".pgn,text/plain,application/x-chess-pgn" onChange={e => 
-              void file(e.target.files?.[0])} /></label>
-          <label>
-            Or paste PGN<textarea value={pgn} onChange={e => 
-              setPgn(e.target.value)} rows={7} required placeholder={'[White "Your username"]\n[Black "Opponent"]\n\n1. e4 e5 …'} spellCheck={false} /></label>
-          <div className="form-grid">
-            <label>Your player name
-              <input name="playerName" maxLength={200} placeholder="As written in the PGN" /></label>
-            <label>Maximum games
-              <input name="maxGames" type="number" min={1} max={200} defaultValue={50} required /></label>
-          </div>
-          <small>If a name is missing or ambiguous, select your colour in each game before personal insights are calculated.</small>
-          <ErrorNotice message={error} />
-          <button className="primary" disabled={busy || !pgn.trim()}>{busy ? 'Queuing import…' : 'Import games'}</button>
-        </form>
-      </Panel>
-      <div>
-        <Panel className="quiet-panel">
-          <p className="eyebrow">A GOOD PLACE TO BEGIN</p>
-          <h2>Try a recent batch.</h2>
-          <p>Start with around 50 games from the same time control. Comparable games make patterns easier to interpret.</p>
-          <hr />
-          <p>Games are validated individually. Valid games are saved even when another record cannot be imported.</p>
-          <p>Importing the same game again will keep one copy in your library.</p>
-        </Panel>
-      </div>
-    </div>
-    <div className="section-title">
-      <h2>Import activity</h2>
-      <a href="#/games">Open library →</a>
-    </div>
-    <ErrorNotice message={jobsError} retry={reload} />
-    {!jobs?.length && <Panel><p>No imports yet. Your progress will appear here.</p></Panel>}
-    {jobs?.map(job => 
-      <Panel key={job.id} className="job">
-        <div className="section-title">
-          <h3>PGN import <span className="pill">{job.state}</span></h3>
-          {['queued', 'running'].includes(job.state) && <button disabled={job.cancelRequested} onClick={() => void send(`/jobs/${job.id}/cancel`).then(reload).catch(e => setError(e.message))}>{job.cancelRequested ? 'Cancelling…' : 'Cancel'}</button>}
-        </div>
-        <progress max={job.total || 1} value={job.processed} aria-label="Import progress" />
-        <p>{job.imported} imported · {job.duplicates} already in library · {job.failures.length} could not be imported</p>
-        {job.error && <p role="status">{job.error}</p>}
-        {job.failures.length > 0 && <details>
-            <summary>View per-game issues</summary>
-            <ul>{job.failures.map(f => 
-              <li key={f.gameNumber}>Game {f.gameNumber}: {f.message}</li>)}</ul>
-          </details>}
-      </Panel>
-      )
     }
   </>;
 }

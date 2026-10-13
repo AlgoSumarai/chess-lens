@@ -14,7 +14,7 @@ On Windows 11 with Docker running, execute from the repository root:
 ./scripts/start.ps1
 ```
 
-This generates a random local database password, builds the images, applies versioned migrations and starts the database, API, worker and frontend. Open `http://localhost:8088`. Containers bind only to loopback. No cloud service is created.
+This generates a random local database password, builds the images, applies versioned migrations and starts the database, API, worker and frontend. Open `http://localhost:8088`. Containers bind only to loopback. `DATABASE_PORT` and `APP_PORT` can override the local ports for isolated verification projects. No cloud service is created.
 
 On Linux or Ubuntu WSL with Docker Engine and the Compose plugin, create `.env` from `.env.example` with a random password, then:
 
@@ -84,6 +84,8 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
+On native Linux/WSL, source `scripts/load-env.sh` to load the same local database settings without evaluating `.env` as shell code.
+
 Backend integration tests create and drop only uniquely named test databases. The configured database user therefore needs local `CREATEDB` permission. Real engine tests require `Stockfish__Path`, set by `load-env.ps1` after installation. For fast rules-only checks without PostgreSQL or Stockfish, use `dotnet test --filter FullyQualifiedName~PgnTests`.
 
 Browser tests use the native URL by default. Set `$env:CHESSLENS_URL='http://127.0.0.1:8088'` to test the container deployment instead. They create clearly named test accounts and import original sample fixtures.
@@ -94,6 +96,6 @@ Accounts, persistent PGN imports, identity selection, legal replay/variations, i
 
 Core weakness snapshots now include traceable supporting positions, sample sizes, recurring/early-signal labels and clock coverage. Personal puzzles validate short tactical objectives with Stockfish, accept checked alternatives, preserve attempts and hints, and schedule spaced review. See [analytics rules](docs/analytics-rules.md) and [puzzle rules](docs/puzzle-rules.md).
 
-Later milestones remain required: provider imports, grounded rating-aware optional model explanations, conversion/endgame detectors, mistake practice, weekly reports and comparable progress. Final release checks remain outstanding.
+Public completed-game Chess.com/Lichess imports, immutable resync and durable bounded batch reviews are now implemented. See [provider import rules](docs/provider-imports.md), [the acceptance matrix](docs/acceptance-matrix.md) and the dated live/fixture/browser evidence in the verification ledger. Grounded rating-aware optional model explanations, conversion/endgame detectors, mistake practice, weekly reports/progress and final release checks remain required.
 
 This local Compose configuration uses development cookie policy for loopback HTTP. It is not a public deployment configuration. Release work must supply HTTPS, proxy trust and origin configuration, backups/restore checks, licence bundles and the full security/performance audit before publication. See [dependency choices](docs/dependencies.md), [third-party notices](THIRD_PARTY_NOTICES.md), and [verification status](docs/verification.md).

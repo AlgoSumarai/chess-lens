@@ -1,6 +1,30 @@
-﻿# Verification ledger
+# Verification ledger
 
 This records demonstrated behavior, not full release readiness. The complete requirements remain in [the build brief](build-brief.md).
+
+## Fresh goal baseline and import slice — 2026-10-13
+
+Inspected clean `main` at `42648a584d62482bac0651438f0f36dd617863c3` before changes. These results apply to that baseline or the explicitly described import-slice worktree, not the final release. Environment: Ubuntu 26.04 x86-64, .NET SDK 10.0.401/runtime 10.0.12, isolated Node 24.15.0, Docker Desktop 4.94/Engine 29.8.2, PostgreSQL 18.6, bundled Linux universal Stockfish 19 extracted from the existing worker image. Stockfish provenance/hash and both architecture packaging remain release gates.
+
+The original database volume rejected authentication using the current local `.env`. The first backend run therefore recorded **38 passed, 20 failed, zero skipped**; this was not counted as a passing database gate. Original credentials/data were preserved. Fresh validation uses the independent `chesslens-validation` Compose project, PostgreSQL loopback port 54339 and app port 8088.
+
+| Scope | Command and result | Evidence |
+| --- | --- | --- |
+| Baseline locked restore | `dotnet restore --locked-mode` passed | `.local/evidence/baseline/restore.log` |
+| Baseline backend, including real engine | `DATABASE_PORT=54339 source scripts/load-env.sh`; `dotnet test ChessLens.slnx --no-restore --logger 'trx;LogFileName=backend-isolated.trx' --results-directory .local/evidence/baseline`: **58 passed, zero failed/skipped**, 14 s | `.local/evidence/baseline/backend-isolated.log`, `backend-isolated.trx` |
+| Baseline frontend | `npm ci`, `npm test`, `npm run build`: **3 component tests passed**, build passed | `.local/evidence/baseline/npm-ci.log`, `components.log`, `web-build.log` |
+| Baseline Compose/browser | `DATABASE_PORT=54339 docker compose -p chesslens-validation -f compose.yaml -f compose.app.yaml up -d --build`; `CHESSLENS_URL=http://localhost:8088 npm run test:e2e`: **6 desktop/mobile journeys passed**, 1.7 min | `.local/evidence/baseline/compose-build.log`, `e2e.log`, `browser-results/`, `playwright-report/` |
+| Import slice backend | Same isolated backend command with `provider-fixed.trx`: **81 passed, zero failed/skipped**, 19 s. 23 additional provider contract/pipeline cases; fixtures are labelled, and the existing real-engine tests also ran | `.local/evidence/providers/backend-fixed.log`, `provider-fixed.trx` |
+| Live provider import/resync | `python3 scripts/check-provider-imports.py`: **both providers passed** through the actual Compose worker. Two completed games each; resync imported zero and found two duplicates each; source records unchanged; imported test data deleted | `.local/evidence/providers/live-import-resync.json`, `live-check.log` |
+| Expanded import Compose/browser | Fresh import-slice build and serialized `npm run test:e2e`: **10 passed, zero failed/skipped**, 1.5 min. Existing journeys plus real PGN batch reservation/Stockfish/reload and labelled provider-form/failure response fixtures, on desktop and Pixel 7 | `.local/evidence/providers/e2e-fixed.log`, `browser-fixed/test-results/`, `browser-fixed/playwright-report/` |
+
+Live games were Chess.com `184627853334` / `184627735638` (102/75 plies, blitz, ratings and all mainline clocks present, unknown opening retained) and Lichess `V1Ipa6IA` / `yTwmCAC4` (81/58 plies, blitz, ratings/clocks/opening metadata present). The bounded selection was 1 September inclusive to 1 October 2026 exclusive. Host curl probes returned Lichess 404s for the documented export while the Compose worker succeeded; only the actual import/resync is the passing application integration evidence. No paid model request or external deployment was made.
+
+`npx playwright install chromium` failed on host DNS/timeouts. The already present **matching** official Playwright 1.63.0 image supplied Chromium revision 1243; tests used `PLAYWRIGHT_BROWSERS_PATH=$PWD/.local/ms-playwright`. This is a tested local fallback, not a claim that the download command passed.
+
+Two browser runs initially collided in Playwright's shared output directory, invalidating one mobile teardown with an artifact ENOENT error (**5 passed, 1 failed**). The initial new batch journey exposed a real empty-body-versus-JSON-null API bug and was stopped (**1 interrupted, 3 not run**). Batch, analysis and insight empty responses now explicitly return JSON `null`, with HTTP regression assertions. The serialized 10-journey rerun passed; failures and interruption remain retained in `.local/evidence/providers/e2e.log`, `imports-e2e.log` and `failed-browser-run/`.
+
+Desktop provider failure and mobile completed-batch screenshots were visually inspected; controls, saved progress and links fit their viewport. Other automated journeys check content width against `documentElement.clientWidth`. This is limited visual QA, not the final keyboard/assistive-technology/accessibility audit. Browser durations are not throughput benchmarks. Additive `ProviderImports` / `ImportBatchAnalysis` migrations applied to the prior validation database; a separate copy-data upgrade and restore verification remains required. OS-level interruption, mixed-workload benchmark, release security/licence/architecture gates and independent review remain open. **Zero review rounds used.**
 
 ## Current source checks — 2026-09-14
 

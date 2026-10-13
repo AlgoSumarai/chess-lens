@@ -16,7 +16,10 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
     public DbSet<UserGame> UserGames => Set<UserGame>();
     public DbSet<ImportedProfile> ImportedProfiles => Set<ImportedProfile>();
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
+    public DbSet<ImportJobGame> ImportJobGames => Set<ImportJobGame>();
+    public DbSet<ProviderThrottle> ProviderThrottles => Set<ProviderThrottle>();
     public DbSet<AnalysisRun> AnalysisRuns => Set<AnalysisRun>();
+    public DbSet<ImportAnalysisBatch> ImportAnalysisBatches => Set<ImportAnalysisBatch>();
     public DbSet<MoveAnalysis> MoveAnalyses => Set<MoveAnalysis>();
     public DbSet<PositionReviewChannel> PositionReviewChannels => Set<PositionReviewChannel>();
     public DbSet<PositionAnalysisJob> PositionAnalysisJobs => Set<PositionAnalysisJob>();
@@ -55,13 +58,28 @@ public sealed class LensDbContext(DbContextOptions<LensDbContext> options) : Ide
             e.HasIndex(j => new { j.State, j.LeaseUntil });
             e.Property(j => j.Version).IsConcurrencyToken();
         });
+        b.Entity<ImportJobGame>(e =>
+        {
+            e.HasKey(g => new { g.JobId, g.GameId });
+            e.HasOne<ImportJob>().WithMany().HasForeignKey(g => g.JobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<UserGame>().WithMany().HasForeignKey(g => new { g.OwnerId, g.GameId }).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(g => new { g.JobId, g.Ordinal });
+        });
+        b.Entity<ProviderThrottle>().HasKey(t => t.Provider);
         b.Entity<AnalysisRun>(e =>
         {
+            e.HasOne<ImportAnalysisBatch>().WithMany().HasForeignKey(j => j.BatchId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<UserGame>().WithMany().HasForeignKey(j => new { j.OwnerId, j.GameId }).OnDelete(DeleteBehavior.Cascade);
             e.HasMany(j => j.Moves).WithOne().HasForeignKey(m => m.RunId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(j => new { j.OwnerId, j.GameId, j.CreatedAt });
             e.HasIndex(j => new { j.State, j.LeaseUntil });
             e.Property(j => j.Version).IsConcurrencyToken();
+        });
+        b.Entity<ImportAnalysisBatch>(e =>
+        {
+            e.HasOne<ImportJob>().WithMany().HasForeignKey(b => b.ImportJobId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(b => new { b.OwnerId, b.ImportJobId, b.Profile }).IsUnique();
+            e.HasIndex(b => new { b.State, b.UpdatedAt });
         });
         b.Entity<MoveAnalysis>(e =>
         {

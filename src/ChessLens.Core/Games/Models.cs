@@ -17,6 +17,10 @@ public sealed class SourceGame
     public string? Opening { get; set; }
     public string? Eco { get; set; }
     public DateTimeOffset? PlayedAt { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+    public string? RatingPool { get; set; }
+    public bool? Rated { get; set; }
     public required string RawPgn { get; set; }
     public required string HeadersJson { get; set; }
     public required string InitialFen { get; set; }

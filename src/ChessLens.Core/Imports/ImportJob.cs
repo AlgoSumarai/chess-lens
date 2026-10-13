@@ -20,6 +20,23 @@ public sealed class ImportJob
     public string? LeaseToken { get; set; }
     public long Version { get; set; }
     public bool CancelRequested { get; set; }
+    public string? CheckpointJson { get; set; }
+    public DateTimeOffset? NextAttemptAt { get; set; }
+    public string Phase { get; set; } = "validating";
+}
+
+public sealed class ImportJobGame
+{
+    public Guid JobId { get; set; }
+    public required string OwnerId { get; set; }
+    public Guid GameId { get; set; }
+    public int Ordinal { get; set; }
+}
+
+public sealed class ProviderThrottle
+{
+    public required string Provider { get; set; }
+    public DateTimeOffset NotBefore { get; set; }
 }
 
 public sealed record PgnImportRequest(string Pgn, string? PlayerName = null, int MaxGames = 50);
