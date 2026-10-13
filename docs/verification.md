@@ -98,6 +98,17 @@ Implemented on `9001c8a` plus the resource-admission worktree. All durable produ
 
 The current Compose images do not yet contain this change. Global engine coordination, mixed-load and OS recovery experiments, final browser/architecture/accessibility/operations/licensing gates and independent review remain required. **Zero review rounds used.**
 
+## Shared engine process slots — 2026-10-13
+
+Implemented on `291a1e8` plus the engine-slot worktree. The worker now requires two database-wide physical-session slots; local permits, demand handoff, idle retirement, cancellation and connection monitoring supervise each child. See [resource limits](resource-limits.md#engine-processes) for exact bounds and the network-partition limitation. The supported Compose topology remains one worker.
+
+- Focused real Stockfish/database checks: **13 passed, zero failed/skipped**, 14 s (`.local/evidence/security/engine-slots-tests.log`, `engine-slots.trx`). Five new checks exercise independent pools, waiting cancellation/session release, actual `pg_terminate_backend` during observed child CPU work, OS-killing a child, and active pool shutdown. Children are observed reaped, physical sessions close, and replacements do not reuse retired caches. Two deliberately held database-slot leases in one test are labelled reservations without children.
+- Full integrated backend: **203 passed, zero failed/skipped**, 2 min 11 s (`engine-slots-integrated.log`, `engine-slots-integrated.trx`). Command: load isolated port-54339 environment, then `dotnet test ChessLens.slnx --no-restore --logger 'trx;LogFileName=engine-slots-integrated.trx' --results-directory .local/evidence/security`. Compose compilation ran concurrently; this duration is not a performance benchmark. Solution build: zero warnings/errors (`engine-slots-build.log`).
+- Locked Compose build passed (`resources-engine-compose.log`). Old API/worker containers were stopped before the retained-budget migration/startup; readiness returned HTTP 200 `ready` (`resources-engine-start.log`). New images include the quota and engine changes. The full 24-case browser regression is still being recorded.
+- One browser process disappeared across a goal continuation with no completed result; its handle was missing and process inventory confirmed no live runner before restarting. The incomplete log and artifacts remain under `resources-engine-browser-interrupted.log` and `browser-engine-interrupted/`. No pass is claimed for that interrupted attempt.
+
+Database-session termination and child OS kill are actual faults, but they do not establish whole-worker termination, database-server outage recovery or mixed-workload throughput. Those experiments and remaining release/independent-review gates stay open. **Zero review rounds used.**
+
 ## Current source checks — 2026-09-14
 
 - Full backend suite: **58 passed, zero failed/skipped** in 47 seconds. Command: `dotnet test tests/ChessLens.Tests --no-restore --logger 'trx;LogFileName=backend.trx' --results-directory .local/TestResults`. Evidence: `.local/TestResults/backend.trx` (generated local artifact). Tests use PostgreSQL 18.6 and the verified official Windows Stockfish 19 binary.

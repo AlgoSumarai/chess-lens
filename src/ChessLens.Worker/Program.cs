@@ -16,6 +16,7 @@ builder.Services.AddScoped<ImportProcessor>();
 builder.Services.AddSingleton<IProviderHttpClient, ProviderHttpClient>();
 builder.Services.AddScoped<ProviderImportProcessor>();
 builder.Services.Configure<EngineOptions>(builder.Configuration.GetSection("Stockfish"));
+builder.Services.AddSingleton(new EngineSlots(builder.Configuration.GetConnectionString("Database")!));
 builder.Services.AddOptions<AnalysisOptions>().Bind(builder.Configuration.GetSection("Analysis"))
     .Validate(o => o.InaccuracyCentipawns >= 1 && o.MistakeCentipawns > o.InaccuracyCentipawns &&
         o.BlunderCentipawns > o.MistakeCentipawns && o.BlunderCentipawns <= 10_000, "Classification thresholds must be strictly increasing.")
