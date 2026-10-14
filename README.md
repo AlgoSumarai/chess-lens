@@ -14,7 +14,7 @@ Use Linux Docker Engine with the Compose plugin and Python 3, on Linux or inside
 ./scripts/start.sh
 ```
 
-This selects Docker Engine's `default` context, preserves an existing `.env` or generates a random database password, builds images, stops old API/worker versions, applies migrations and waits for database/worker/engine readiness. Open `http://localhost:8088`. Containers bind only to loopback. Set `CHESSLENS_DOCKER_CONTEXT` for another Linux Engine context, `CHESSLENS_PROJECT` for an isolated project, and `DATABASE_PORT`/`APP_PORT` for different local ports. The script rejects Docker Desktop. Existing volume credentials must match `.env`; restarting does not reset a volume's password. Back up before an upgrade; migration startup has a brief application interruption.
+This selects Docker Engine's `default` context, preserves an existing `.env` or generates a random database password, builds images, stops old API/worker versions, applies migrations and waits for database/worker/engine readiness. Open `http://localhost:8088`. Containers bind only to loopback. Set `CHESSLENS_DOCKER_CONTEXT` for another Linux Engine context, `CHESSLENS_PROJECT` for an isolated project, and `DATABASE_PORT`/`APP_PORT` for different local ports. The script rejects Docker Desktop. Existing volume credentials must match `.env`; restarting does not reset a volume's password. Back up before an upgrade; migration startup has a brief application interruption. Use the [backup and isolated restore commands](docs/backup-restore.md) to preserve both saved data and persistent authentication keys.
 
 On Windows 11, install Docker Engine and the Compose plugin inside Ubuntu WSL 2, keep the checkout in its Linux filesystem, then run from PowerShell (adjust the distribution/path):
 
