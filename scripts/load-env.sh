@@ -14,12 +14,16 @@ if [[ -z "${ConnectionStrings__Database:-}" ]]; then
     echo 'Set a random POSTGRES_PASSWORD in .env first.' >&2
     return 1 2>/dev/null || exit 1
   fi
-  export ConnectionStrings__Database="Host=localhost;Port=${DATABASE_PORT:-54329};Database=chesslens;Username=chesslens;Password=$chesslens_password;Include Error Detail=false"
+  export ConnectionStrings__Database="Host=localhost;Port=${DATABASE_PORT:-54329};Database=chesslens;Username=chesslens;Password=$chesslens_password;Include Error Detail=false;GSS Encryption Mode=Disable"
   unset chesslens_password
 fi
 export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"
 export DOTNET_ENVIRONMENT="${DOTNET_ENVIRONMENT:-Development}"
-if [[ -z "${Stockfish__Path:-}" && -x "$chesslens_workspace/.local/stockfish/stockfish-linux-x86-64-universal" ]]; then
-  export Stockfish__Path="$chesslens_workspace/.local/stockfish/stockfish-linux-x86-64-universal"
+if [[ -z "${Stockfish__Path:-}" ]]; then
+  if [[ -x "$chesslens_workspace/.local/stockfish-19/stockfish/stockfish" ]]; then
+    export Stockfish__Path="$chesslens_workspace/.local/stockfish-19/stockfish/stockfish"
+  elif [[ -x "$chesslens_workspace/.local/stockfish/stockfish-linux-x86-64-universal" ]]; then
+    export Stockfish__Path="$chesslens_workspace/.local/stockfish/stockfish-linux-x86-64-universal"
+  fi
 fi
 unset chesslens_line chesslens_workspace

@@ -39,7 +39,7 @@ Stop containers with `docker compose -f compose.yaml -f compose.app.yaml stop`. 
 
 ## Native development
 
-Requires .NET SDK 10.0.401 (or a newer servicing patch in that feature band), Node 24 and PostgreSQL (the database-only Compose file supplies it).
+Requires .NET SDK 10.0.402 (or a newer servicing patch in that feature band), Node 24 and PostgreSQL (the database-only Compose file supplies it).
 
 ```powershell
 ./scripts/init-env.ps1

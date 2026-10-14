@@ -9,6 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="../ChessLens.Core/ChessLens.Core.csproj" />
     <EmbeddedResource Include="../../samples/first-review.pgn" LogicalName="ChessLens.Demo.Pgn" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12"><PrivateAssets>all</PrivateAssets></PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13"><PrivateAssets>all</PrivateAssets></PackageReference>
   </ItemGroup>
 </Project>

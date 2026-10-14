@@ -17,8 +17,8 @@
   <ItemGroup>
     <Using Include="Xunit" />
     <ProjectReference Include="../../src/ChessLens.Api/ChessLens.Api.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
   </ItemGroup>
 
 </Project>

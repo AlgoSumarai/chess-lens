@@ -1,0 +1,13 @@
+# Local cross-architecture validation on an x86-64 Engine with ARM64 emulation.
+# Native ARM64 hosts select ARM64 images automatically without this overlay.
+services:
+  database:
+    platform: linux/arm64
+  migrate:
+    platform: linux/arm64
+  api:
+    platform: linux/arm64
+  worker:
+    platform: linux/arm64
+  frontend:
+    platform: linux/arm64
