@@ -6,7 +6,7 @@ import { send } from './api';
 const mocks = vi.hoisted(() => ({ session: {} as Record<string, unknown>, reload: vi.fn() }));
 vi.mock('./jobHooks', () => ({ useSavedJob: () => ({ data: mocks.session, error: '', reload: mocks.reload, connected: true }) }));
 vi.mock('./api', () => ({ api: vi.fn(), send: vi.fn() }));
-vi.mock('react-chessboard', () => ({ Chessboard: () => <div aria-label="Labelled board component fixture" /> }));
+vi.mock('react-chessboard', async importOriginal => ({ ...(await importOriginal<typeof import('react-chessboard')>()), Chessboard: () => <div aria-label="Labelled board component fixture" /> }));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubGlobal('matchMedia', () => ({ matches: true }));

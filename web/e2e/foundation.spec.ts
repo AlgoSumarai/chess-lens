@@ -1,3 +1,4 @@
+import { auditAccessibility } from './accessibility';
 import { expect, test } from '@playwright/test';
 import path from 'node:path';
 
@@ -56,6 +57,7 @@ test('register, import, identify, replay and explore an unchanged mainline', asy
   await expect(page.getByRole('status', { name: 'Position status' })).toContainText('After Nc6');
   await expect(page.getByRole('status', { name: 'Position analysis status' })).toContainText('Position reviewed', { timeout: 30000 });
   await expect(page.getByLabel('Candidate continuations')).toContainText('for White');
+  await auditAccessibility(page, info, 'visible-candidates');
   const activeBounds = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth }));
   expect(activeBounds.content).toBeLessThanOrEqual(activeBounds.viewport + 1);
   await page.screenshot({ path: `test-results/candidates-${info.project.name}.png`, fullPage: true });

@@ -1,3 +1,4 @@
+import { auditAccessibility } from './accessibility';
 import { expect, test } from '@playwright/test';
 
 test('original artificial game samples with real deep reviews produce a supported descriptive comparison', async ({ page }, info) => {
@@ -28,6 +29,7 @@ test('original artificial game samples with real deep reviews produce a supporte
   await expect(page.getByRole('img', { name: /Verified error rates, previous 33.3 percent, current 0.0 percent/ })).toBeVisible();
   await expect(page.getByText(/Descriptive difference between compatible decision samples/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'No supported weakness in this group.', exact: true })).toBeVisible();
+  await auditAccessibility(page, info, 'comparable-progress');
   const id = page.url().split('/reports/')[1]; const saved = (await (await page.request.get(`/api/reports/${id}`)).json()).result;
   expect(saved.results).toEqual({ wins: 5, draws: 0, losses: 0, unknown: 0 });
   expect(saved.groups[0].coverage.stableDecisions).toBe(10); expect(saved.groups[0].comparison.previousEligible).toBe(15);

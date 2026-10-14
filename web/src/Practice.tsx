@@ -1,6 +1,10 @@
+import { StatusMessage } from './StatusMessage';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
+import { namedPieces } from './chessPieces';
+import { BoardPositionText } from './BoardPositionText';
+import { PromotionChoices } from './PromotionChoices';
 import { api, send } from './api';
 import { useRemote } from './hooks';
 import { useSavedJob } from './jobHooks';
@@ -61,12 +65,12 @@ export function PracticePage({ id, attemptId }: { id: string; attemptId?: string
   return <><a className="back-link" href="#/practice">← Mistake practice</a><div className="page-heading compact"><div><p className="eyebrow">YOUR COLOUR. A NEW CONTINUATION.</p><h1>{session.state === 'preparing' && !attemptId ? 'Checking your practice position' : objective.title}</h1><p>You play {session.side}. {objective.instruction}</p></div></div>
     <div className="review-grid training-grid"><PracticeBoard attempt={attempt} side={session.side} active={active && !busy} play={move => void command('moves', move)} />
       <div className="review-side"><Panel><h2>{attempt.state === 'active' ? `Attempt ${attempt.number}` : outcome(attempt.state)}</h2>
-        <p role="status" aria-label="Mistake practice status">{busy ? 'Saving your command…' : waiting ? session.state === 'preparing' ? 'Confirming the starting objective with full-strength checks…' : 'Checking your decision and preparing the opponent’s reply…' : active ? 'Your move. Select a piece and destination, or enter a coordinate move.' : `${outcome(attempt.state)} · ${attempt.assisted ? 'assisted' : 'unassisted'} attempt.`}</p>
+        <StatusMessage aria-label="Mistake practice status">{busy ? 'Saving your command…' : waiting ? session.state === 'preparing' ? 'Confirming the starting objective with full-strength checks…' : 'Checking your decision and preparing the opponent’s reply…' : active ? 'Your move. Select a piece and destination, or enter a coordinate move.' : `${outcome(attempt.state)} · ${attempt.assisted ? 'assisted' : 'unassisted'} attempt.`}</StatusMessage>
         <ErrorNotice message={error || problem || (!attemptId ? session.error ?? '' : '')} retry={reload} />
         <p>{Math.min(attempt.decisionsPlayed, objective.decisions)} of {objective.decisions} player decisions · {attempt.hintsUsed} hints · {attempt.undosUsed} undos</p>
         {attempt.endgame && <p>Position ended: {attempt.endgame}.</p>}
         {!attemptId && attempt.state === 'active' && <div className="analysis-actions"><button disabled={busy || !active || attempt.hintsUsed >= 6} onClick={() => void command('hint')}>Get a hint</button><button disabled={busy || attempt.history.length === 0 || session.state === 'preparing' || attempt.undosUsed >= 6} onClick={() => void command('undo')}>Undo last decision</button><button disabled={busy} onClick={() => void command('cancel')}>End attempt</button></div>}
-        {attempt.hint && <p className="practice-note" role="status">{attempt.hint}</p>}
+        {attempt.hint && <StatusMessage className="practice-note">{attempt.hint}</StatusMessage>}
         <small>Hints and undo mark this attempt as assisted. Any legal continuation meeting the checked objective is accepted.</small>
         {!attemptId && <p><button disabled={busy} onClick={() => void command('retry')}>{attempt.state === 'active' ? 'Restart with a fresh attempt' : 'Try again'}</button></p>}
         {attemptId && <p><a className="button primary" href={`#/practice/${id}`}>Return to current attempt</a></p>}
@@ -92,14 +96,15 @@ function PracticeBoard({ attempt, side, active, play }: { attempt: Attempt; side
     if (attempt.legalMoves.includes(move)) play(move); else if (move.length !== 4 || !choose(move.slice(0, 2), move.slice(2, 4))) setError('Enter a legal coordinate move, such as e2e4 or a7a8q.'); };
   const styles: Record<string, CSSProperties> = {};
   if (selected && active) { styles[selected] = { backgroundColor: '#bc934e' }; for (const move of attempt.legalMoves.filter(m => m.startsWith(selected))) styles[move.slice(2, 4)] = { backgroundImage: 'radial-gradient(circle, #2b3c4280 22%, transparent 24%)' }; }
-  return <section className="board-section" aria-label="Mistake practice board"><div className="board-wrap"><Chessboard options={{ id: `practice-${attempt.id}`, position: playback === null ? attempt.fen : replay.fen(), boardOrientation: orientation, allowDragging: active, squareStyles: styles,
+  return <section className="board-section" aria-label="Mistake practice board"><div className="board-wrap"><Chessboard options={{ pieces: namedPieces, lightSquareNotationStyle: { color: '#101010' }, darkSquareNotationStyle: { color: '#101010' }, id: `practice-${attempt.id}`, position: playback === null ? attempt.fen : replay.fen(), boardOrientation: orientation, allowDragging: active, squareStyles: styles,
     darkSquareStyle: { backgroundColor: '#8d7961' }, lightSquareStyle: { backgroundColor: '#ece2cd' }, animationDurationInMs: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160,
     onSquareClick: ({ square }) => { if (!active) return; if (selected && choose(selected, square)) return; setSelected(square); },
     onPieceDrop: ({ sourceSquare, targetSquare }) => targetSquare ? choose(sourceSquare, targetSquare) : false,
   }} /></div><div className="board-controls"><button onClick={() => setOrientation(o => o === 'white' ? 'black' : 'white')}>Flip board</button><span>{playback === null ? 'Saved practice position' : `Review ${playback}/${attempt.history.length}`}</span></div>
-    <p className="variation-line" aria-label="Practice notation">{(playback === null ? attempt.notation : replay.history()).join(' ') || 'Position immediately before your mistake'}</p>
+    <p className="variation-line" role="group" aria-label="Practice notation">{(playback === null ? attempt.notation : replay.history()).join(' ') || 'Position immediately before your mistake'}</p>
     {active && <form className="practice-move-form" onSubmit={submit}><label>Coordinate move<input value={typed} onChange={e => setTyped(e.target.value)} maxLength={5} placeholder="e2e4" autoComplete="off" /></label><button className="primary">Play move</button></form>}
-    {promotion && active && <fieldset className="promotion"><legend>Promote to</legend>{[['q', 'Queen'], ['r', 'Rook'], ['b', 'Bishop'], ['n', 'Knight']].map(([piece, label]) => <button key={piece} onClick={() => play(promotion + piece)}>{label}</button>)}<button onClick={() => setPromotion(undefined)}>Cancel promotion</button></fieldset>}
+    {promotion && active && <PromotionChoices choose={piece => play(promotion + piece)} cancel={() => setPromotion(undefined)} />}
+    <BoardPositionText fen={playback === null ? attempt.fen : replay.fen()} legalMoves={active ? attempt.legalMoves : undefined} />
     <ErrorNotice message={error} />
     {attempt.review && <div className="board-controls"><button disabled={playback === 0} onClick={() => setPlayback(n => Math.max(0, (n ?? attempt.history.length) - 1))}>Previous practice move</button><button disabled={playback === null || playback === attempt.history.length} onClick={() => setPlayback(n => Math.min(attempt.history.length, (n ?? 0) + 1))}>Next practice move</button><button onClick={() => setPlayback(null)}>Final position</button></div>}
   </section>;

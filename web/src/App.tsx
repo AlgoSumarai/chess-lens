@@ -1,3 +1,4 @@
+import { StatusMessage } from './StatusMessage';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, refreshCsrf, send, type GameSummary, type Page, type User } from './api';
 import { useRemote, useRoute } from './hooks';
@@ -22,6 +23,12 @@ export function App() {
   const route = useRoute();
   const routePath = route.split('?')[0];
   const routeQuery = new URLSearchParams(route.split('?')[1] ?? '');
+  const pageName = routePath.startsWith('/games/') ? 'Game review' : routePath.startsWith('/puzzles/') ? 'Personal puzzle' : routePath.startsWith('/practice/') ? 'Mistake practice' : routePath.startsWith('/reports/') ? 'Saved report' : ({ '/': 'Overview', '/games': 'Your games', '/import': 'Import games', '/weaknesses': 'Weaknesses', '/puzzles': 'Puzzle practice', '/practice': 'Mistake practice', '/reports': 'Weekly reports', '/progress': 'Progress', '/settings': 'Settings' } as Record<string, string>)[routePath] ?? 'Your workspace';
+
+  useEffect(() => {
+    document.title = `${user ? pageName : 'Welcome'} · ChessLens`;
+    if (user) document.getElementById('main')?.focus();
+  }, [route, !!user]);
 
   //user-handling ---start
   const loadAccount = async () => {
@@ -84,7 +91,7 @@ export function App() {
       <header className="topbar"><span>Review. Understand. Improve.</span><span className="level">{user.coachingLevel} coaching</span></header>
       
       {/* linking routes to their components */}
-      <main id="main" tabIndex={-1}>
+      <main id="main" tabIndex={-1} aria-label={pageName}>
         { 
           route === '/' ? <Dashboard /> :
           route === '/games' ? <Library /> : 
@@ -343,7 +350,7 @@ function Settings({ user, onUpdate, onSignOut }: { user: User; onUpdate: (u: Use
             <small>Factual coaching works at every level without a model key. Optional requests require a configured server budget and your selection here. Provider ratings stay separate.</small>
             <ErrorNotice message={error} />
             <button className="primary">Save preferences</button>
-            {saved && <p role="status">Preferences saved.</p>}
+            {saved && <StatusMessage>Preferences saved.</StatusMessage>}
         </form>
       </Panel>
       <div>

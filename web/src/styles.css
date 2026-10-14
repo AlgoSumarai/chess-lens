@@ -48,3 +48,19 @@ progress{width:100%;accent-color:var(--accent)}
 .saved-report>.panel{margin:1.2rem 0}.saved-report small{display:block}.saved-report h3{margin-top:1rem}.saved-report .eyebrow{overflow-wrap:anywhere}
 @media(max-width:850px){.report-form{grid-template-columns:repeat(2,minmax(0,1fr))}.report-form button{grid-column:1/-1;justify-self:start}}
 @media(max-width:560px){.report-form,.report-metrics,.training-summaries{grid-template-columns:minmax(0,1fr)}.report-table th,.report-table td{padding:.7rem .4rem}.metric-number{font-size:1.4rem}.report-list .section-title{flex-wrap:wrap}}
+
+/* Replay controls remain focusable at the ends so arrow/Home/End navigation keeps working. */
+.board-controls button[aria-disabled=true]{opacity:.45;cursor:not-allowed}
+.position-text p{overflow-wrap:anywhere}
+.players strong{overflow-wrap:anywhere}
+
+.status-message>p{margin:0}.panel>.status-message{margin-top:.7rem}
+
+.sidebar{overflow-y:auto}
+.evaluation-bar>span{inset:0 auto;left:50%;transform:translateX(-50%);padding:0 .4rem;background:#101923;white-space:nowrap;text-shadow:none}
+.topbar,.review-heading,.board-controls{flex-wrap:wrap}
+.review-heading>div{min-width:0;flex:1 1 220px}
+.page-heading p{overflow-wrap:anywhere}
+.section-title{flex-wrap:wrap}
+.section-title>*{min-width:0}
+.section-title .pill{max-width:100%;overflow-wrap:anywhere}

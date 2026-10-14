@@ -1,12 +1,16 @@
+import { StatusMessage } from './StatusMessage';
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
+import { namedPieces } from './chessPieces';
 import { api, send, type Game, type Position } from './api';
 import { useRemote } from './hooks';
 import { ErrorNotice, Panel } from './App';
 import { useAnalysis } from './analysis';
 import { AnalysisPanel, EvaluationBar, EvaluationGraph } from './AnalysisPanel';
 import { PositionAnalysisPanel } from './PositionAnalysisPanel';
+import { BoardPositionText } from './BoardPositionText';
+import { PromotionChoices } from './PromotionChoices';
 
 export function GameReview({ id, initialPly = 0, runId, coachingLevel = 'beginner', modelOptIn = false }: { id: string; initialPly?: number; runId?: string; coachingLevel?: string; modelOptIn?: boolean }) {
   const { data: game, error, reload } = useRemote<Game>(`/games/${id}`);
@@ -99,8 +103,9 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
   const keyboardMove = (e: FormEvent) => { 
       e.preventDefault(); 
       const uci = typed.trim().toLowerCase(); 
-      if (!play(uci) && uci.length === 4) 
-        choose(uci.slice(0, 2), uci.slice(2, 4)); 
+      if (uci.length === 4 && position?.legalMoves.some(m => m.startsWith(uci) && m.length === 5)) {
+        setError(''); choose(uci.slice(0, 2), uci.slice(2, 4));
+      } else play(uci);
       };
   return <>
     <a className="back-link" href="#/games">← Your games</a>
@@ -125,6 +130,7 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
     }
     <div className="review-grid" onKeyDown={e => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+      if ((e.target as HTMLElement).closest('[aria-roledescription="draggable"]')) return;
       if (e.key === 'ArrowLeft') { 
         e.preventDefault(); 
         navigate(ply - 1); 
@@ -149,7 +155,7 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
           <small>{(orientation === 'white' ? game.blackRating : game.whiteRating) ?? 'Unrated'}</small>
         </div>
         <div className="board-wrap">
-          <Chessboard options={{ id: `review-${game.id}`, 
+          <Chessboard options={{ pieces: namedPieces, lightSquareNotationStyle: { color: '#101010' }, darkSquareNotationStyle: { color: '#101010' }, id: `review-${game.id}`,
             position: position?.fen ?? local.fen(), 
             boardOrientation: orientation, 
             allowDragging: !busy && !!position,
@@ -167,14 +173,14 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
           <small>{(orientation === 'white' ? game.whiteRating : game.blackRating) ?? 'Unrated'}</small>
         </div>
         <div className="board-controls">
-          <button aria-label="First position" disabled={ply === 0 && !variation.length} onClick={() => 
+          <button aria-label="First position" aria-disabled={ply === 0 && !variation.length} onClick={() =>
             navigate(0)}>⏮</button>
-          <button aria-label="Previous move" disabled={ply === 0 && !variation.length} onClick={() => 
+          <button aria-label="Previous move" aria-disabled={ply === 0 && !variation.length} onClick={() =>
             variation.length ? setVariation(v => v.slice(0, -1)) : navigate(ply - 1)}>←</button>
           <span>{variation.length ? `Variation · ${variation.length} half-moves` : `${ply} / ${game.moves.length}`}</span>
-          <button aria-label="Next move" disabled={ply === game.moves.length} onClick={() => 
+          <button aria-label="Next move" aria-disabled={ply === game.moves.length} onClick={() =>
             navigate(ply + 1)}>→</button>
-          <button aria-label="Last position" disabled={ply === game.moves.length && !variation.length} onClick={() => 
+          <button aria-label="Last position" aria-disabled={ply === game.moves.length && !variation.length} onClick={() =>
             navigate(game.moves.length)}>⏭</button>
           <button aria-label="Flip board" onClick={() => 
             setOrientation(o => o === 'white' ? 'black' : 'white')}>↻</button>
@@ -191,7 +197,7 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
             <h2>Moves</h2>
             <span className="pill">{variation.length ? 'EXPLORING' : 'MAINLINE'}</span>
           </div>
-          <div className="notation" aria-label="Game notation">
+          <div className="notation" role="group" aria-label="Game notation">
             {game.moves.map(m => 
               <button key={m.ply} aria-label={`Move ${m.ply}: ${m.san}`} aria-current={m.ply === ply ? 'step' : undefined} onClick={() => 
                 navigate(m.ply)}>
@@ -204,7 +210,7 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
         <Panel>
           <p className="eyebrow">THE SELECTED POSITION</p>
           <h2>{position?.endgame ?? `${position?.sideToMove ?? (local.turn() === 'w' ? 'White' : 'Black')} to move`}</h2>
-          <p role="status" aria-label="Position status">{busy ? 'Checking position…' : variation.length ? 'Exploring an alternative line. Your original game is preserved.' : move ? `After ${move.san}. ${move.clockSeconds === null ? 'Clock unavailable for this move.' : `${move.clockSeconds.toFixed(1)} seconds remained on the moving player’s clock.`}` : 'The starting position of your game.'}</p>
+          <StatusMessage aria-label="Position status">{busy ? 'Checking position…' : variation.length ? 'Exploring an alternative line. Your original game is preserved.' : move ? `After ${move.san}. ${move.clockSeconds === null ? 'Clock unavailable for this move.' : `${move.clockSeconds.toFixed(1)} seconds remained on the moving player’s clock.`}` : 'The starting position of your game.'}</StatusMessage>
           <ErrorNotice message={error} />
           
           {
@@ -217,14 +223,7 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
 
           {
             promotion && 
-            <fieldset className="promotion">
-              <legend>Promote your pawn to</legend>
-              {
-                [['q', 'Queen'], ['r', 'Rook'], ['b', 'Bishop'], ['n', 'Knight']].map(([piece, label]) => 
-                  <button key={piece} onClick={() => play(promotion + piece)}>{label}</button>)
-              }
-              <button onClick={() => setPromotion(undefined)}>Cancel</button>
-            </fieldset>
+            <PromotionChoices choose={piece => { play(promotion + piece); }} cancel={() => setPromotion(undefined)} />
           }
           <form className="coordinate-form" onSubmit={keyboardMove}>
             <label>Explore a move
@@ -234,11 +233,7 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
                 maxLength={5} autoComplete="off" /></label>
             <button disabled={busy || !typed}>Play move</button>
           </form>
-          <details>
-            <summary>Legal moves and position text</summary>
-            <p className="mono">{position?.legalMoves.join(' · ') || (busy ? 'Loading…' : 'No legal moves.')}</p>
-            <p className="mono">{position?.fen ?? local.fen()}</p>
-          </details>
+          <BoardPositionText fen={position?.fen ?? local.fen()} legalMoves={position?.legalMoves} />
         </Panel>
         <PositionAnalysisPanel gameId={game.id} 
           ply={ply} 

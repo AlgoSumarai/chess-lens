@@ -19,6 +19,7 @@ Versions selected 2026-09-13. Exact direct references and transitive lockfiles a
 | chess.js | 1.4.0 | Client-side legal variations; server remains authoritative |
 | SignalR client | 10.0.0 | Owner-scoped progress notifications with HTTP reconciliation |
 | Vitest / Playwright | 5.0.0 / 1.63.0 | Component behavior and real browser journeys |
+| axe-core / Playwright integration | 4.13.0 | [Official accessibility integration](https://playwright.dev/docs/accessibility-testing); pinned automated scans |
 | nginx | 1.30.4-alpine | [Official image manifest](https://github.com/docker-library/official-images/blob/master/library/nginx) |
 
 The selected PostgreSQL image resolved locally to `postgres@sha256:4ef4dbc939d61acea57712655ddb4b4ab27419c913f94cca0cd57cb3ea3c2280`. Image tags are version-pinned; record and lock all release image digests during release preparation.

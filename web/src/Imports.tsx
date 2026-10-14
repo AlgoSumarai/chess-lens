@@ -1,3 +1,4 @@
+import { StatusMessage } from './StatusMessage';
 import { useState, type FormEvent } from 'react';
 import { send, type Job, type ProviderRequest } from './api';
 import { useRemote } from './hooks';
@@ -88,10 +89,10 @@ function ImportActivity({ job, refresh, busy, resync }: { job: Job; refresh: () 
   return <Panel className="job">
     <div className="section-title"><h3>{providerName(job.source)} import{job.request && ` · ${job.request.username}`} <span className="pill">{job.state}</span></h3>
       {active && <button disabled={job.cancelRequested} onClick={() => void send(`/jobs/${job.id}/cancel`).then(refresh).catch(e => setError(e.message))}>{job.cancelRequested ? 'Cancelling…' : 'Cancel'}</button>}</div>
-    {job.phase === 'fetching' && active ? <p role="status">Finding completed games in your selection… {job.total > 0 && `${job.total} found so far.`}</p> :
+    {job.phase === 'fetching' && active ? <StatusMessage>Finding completed games in your selection… {job.total > 0 && `${job.total} found so far.`}</StatusMessage> :
       <progress max={job.total || 1} value={job.processed} aria-label="Import progress" />}
     <p>{job.imported} imported · {job.duplicates} already in library · {job.failures.length} could not be imported</p>
-    {job.error && <p role="status">{job.error}{job.nextAttemptAt && active && ` Next check: ${new Date(job.nextAttemptAt).toLocaleTimeString()}.`}</p>}
+    {job.error && <StatusMessage>{job.error}{job.nextAttemptAt && active && ` Next check: ${new Date(job.nextAttemptAt).toLocaleTimeString()}.`}</StatusMessage>}
     {job.failures.length > 0 && <details><summary>View per-game issues</summary><ul>{job.failures.map(f => <li key={f.gameNumber}>Game {f.gameNumber}: {f.message}</li>)}</ul></details>}
     <ErrorNotice message={error} />
     {!active && <div className="toolbar">
@@ -116,7 +117,7 @@ function BatchSelection({ jobId }: { jobId: string }) {
         <label>Review depth<select name="profile"><option value="quick">Quick · provisional overview</option><option value="deep">Deep · more engine work</option></select></label></div>
         <p>The first selected games in this import, up to 20. Existing completed reviews are reused. At most three game reviews run or wait in the active queue; the rest start automatically. All requested moves count toward your daily budget.</p>
         <button className="primary" disabled={busy}>{busy ? 'Starting reviews…' : 'Analyse selected games'}</button></form>}
-    {data === undefined && !error && <p role="status">Checking saved batch reviews…</p>}
+    {data === undefined && !error && <StatusMessage>Checking saved batch reviews…</StatusMessage>}
   </div>;
 }
 
@@ -125,10 +126,10 @@ export function AnalysisBatchPage({ id }: { id: string }) {
   const [commandError, setCommandError] = useState('');
   return <><div className="page-heading compact"><div><p className="eyebrow">YOUR NEXT STEP</p><h1>Batch review</h1><p>Saved progress. Open any finished game while the others are being reviewed.</p></div><a href="#/import">Back to imports →</a></div>
     <ErrorNotice message={error} retry={reload} /><ErrorNotice message={commandError} />
-    {!batch && !error && <p role="status">Opening your saved reviews…</p>}
+    {!batch && !error && <StatusMessage>Opening your saved reviews…</StatusMessage>}
     {batch && <Panel><div className="section-title"><h2>{batch.completedGames}/{batch.totalGames} games reviewed</h2><span className="pill">{batch.state}</span></div>
       <progress max={batch.totalPlies || 1} value={batch.completedPlies} aria-label="Batch analysis progress" />
-      <p role="status">{batch.completedPlies}/{batch.totalPlies} half-moves reviewed · {batch.profile} review{batch.reusedReviews > 0 && ` · ${batch.reusedReviews} existing reviews reused`}</p>
+      <StatusMessage>{batch.completedPlies}/{batch.totalPlies} half-moves reviewed · {batch.profile} review{batch.reusedReviews > 0 && ` · ${batch.reusedReviews} existing reviews reused`}</StatusMessage>
       {['queued', 'running'].includes(batch.state) && <button disabled={batch.cancelRequested} onClick={() => void send(`/analysis-batches/${batch.id}/cancel`).then(reload).catch(e => setCommandError(e.message))}>{batch.cancelRequested ? 'Cancelling…' : 'Cancel remaining reviews'}</button>}
       {batch.failedGames > 0 && <p>Some games could not be fully reviewed. Open a game to see the reason and retry its analysis.</p>}
       <ol>{batch.runs.map((run, i) => <li key={run.id}><a href={`#/games/${run.gameId}?run=${run.id}`}>Game {i + 1}</a> · {run.state} · {run.completedPlies}/{run.totalPlies} half-moves{run.error && <p>{run.error}</p>}</li>)}</ol>

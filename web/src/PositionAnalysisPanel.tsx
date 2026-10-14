@@ -1,3 +1,4 @@
+import { StatusMessage } from './StatusMessage';
 import { useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
 import { api, send } from './api';
@@ -65,9 +66,9 @@ export function PositionAnalysisPanel({ gameId, ply, variation, fen, ready, revi
   return <Panel className="position-analysis"><div className="section-title"><h2>Explore this position</h2><span className="pill">POST-GAME</span></div>
     <p>Compare candidate moves in the position on your board. Estimates use a bounded search and may change with deeper analysis.</p>
     <button disabled={!ready && !enabled} onClick={() => setEnabled(v => !v)}>{enabled ? 'Stop position analysis' : 'Analyse this position'}</button>
-    {enabled && <p role="status" aria-label="Position analysis status">{!ready ? 'Waiting for a legal position.' : error ? 'Position review needs attention.' : !current ? 'Preparing position review…' : current.state === 'completed' ? `Position reviewed · ${current.result?.engine}` : current.state === 'queued' ? 'Position review queued…' : current.state === 'running' ? 'Analysing the selected position…' : `Position review ${current.state}.`}</p>}
+    {enabled && <StatusMessage aria-label="Position analysis status">{!ready ? 'Waiting for a legal position.' : error ? 'Position review needs attention.' : !current ? 'Preparing position review…' : current.state === 'completed' ? `Position reviewed · ${current.result?.engine}` : current.state === 'queued' ? 'Position review queued…' : current.state === 'running' ? 'Analysing the selected position…' : `Position review ${current.state}.`}</StatusMessage>}
     <ErrorNotice message={error || current?.error || ''} retry={() => setRetry(v => v + 1)} />
-    {lines.length > 0 && <div aria-label="Candidate continuations">{lines.map(line => <div className="coaching" key={line.rank}>
+    {lines.length > 0 && <div role="group" aria-label="Candidate continuations">{lines.map(line => <div className="coaching" key={line.rank}>
       <strong>Candidate {line.rank} · {label(line.score)}{line.bound ? ' · bound' : ''}</strong>
       <p className="variation-line">{notation(line.pv)}</p><small>Depth {line.depth} · provisional position estimate</small>
     </div>)}</div>}

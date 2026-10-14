@@ -1,10 +1,14 @@
+import { auditAccessibility } from './accessibility';
 import { execFileSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 
 test('a labelled past completion timestamp exercises saved weekly reports and timezone changes with real engine evidence', async ({ page }, info) => {
   const database = process.env.CHESSLENS_TEST_DATABASE_CONTAINER;
   test.skip(!database, 'Past completion dates require an explicitly selected isolated validation database; this is a labelled temporal fixture.');
-  if (!/^chesslens-validation-[a-z0-9-]*database-1$/.test(database!)) throw new Error('Only an isolated chesslens-validation database container is allowed.');
+  const isolatedProject = /^(chesslens-(?:[a-z0-9-]+-)?validation)-database-1$/.exec(database!);
+  if (!isolatedProject) throw new Error('Only an isolated chesslens-*-validation database container is allowed.');
+  const projectLabel = execFileSync('docker', ['--context', 'default', 'inspect', '--format', '{{index .Config.Labels "com.docker.compose.project"}}', database!], { encoding: 'utf8', timeout: 10000 }).trim();
+  if (projectLabel !== isolatedProject[1]) throw new Error('The explicitly selected database must belong to the matching isolated validation project.');
   await page.goto('/'); await page.getByRole('button', { name: 'New here? Create an account' }).click();
   await page.getByLabel('Email', { exact: true }).fill(`weekly-fixture-${info.project.name}-${Date.now()}@test.example`);
   await page.getByLabel('Password', { exact: true }).fill('ChessLens.E2e2026!'); await page.getByRole('button', { name: 'Create account', exact: true }).click();
@@ -20,7 +24,7 @@ test('a labelled past completion timestamp exercises saved weekly reports and ti
   const fixtureTimestamp = new Date(new Date(calendar.latestCompleted.from).getTime() + 86400000).toISOString();
   if (!/^[a-f0-9-]{36}$/.test(runId)) throw new Error('Invalid fixture run ID');
   // Only this newly created fixture run is dated retrospectively. Moves, scores and engine provenance are real.
-  execFileSync('docker', ['exec', '-i', database!, 'psql', '-U', 'chesslens', '-d', 'chesslens', '-v', 'ON_ERROR_STOP=1', '-q'], {
+  execFileSync('docker', ['--context', 'default', 'exec', '-i', database!, 'psql', '-U', 'chesslens', '-d', 'chesslens', '-v', 'ON_ERROR_STOP=1', '-q'], {
     input: `UPDATE "AnalysisRuns" SET "UpdatedAt" = '${fixtureTimestamp}' WHERE "Id" = '${runId}' AND "State" = 'completed';`,
     stdio: ['pipe', 'pipe', 'pipe'], timeout: 10000,
   });
@@ -29,6 +33,7 @@ test('a labelled past completion timestamp exercises saved weekly reports and ti
   await expect(page.getByRole('status', { name: 'Report status' })).toHaveText('Saved report ready.', { timeout: 30000 });
   await expect(page.getByRole('heading', { name: 'Your weekly reflection', exact: true })).toBeVisible();
   await expect(page.getByText('1 selected games have no played-at date', { exact: false })).toBeVisible();
+  await auditAccessibility(page, info, 'weekly-report');
   const savedUrl = page.url(); const id = savedUrl.split('/reports/')[1];
   const original = (await (await page.request.get(`/api/reports/${id}`)).json());
   expect(original.period.timezone).toBe('UTC'); expect(original.result.results.wins).toBe(1);

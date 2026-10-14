@@ -1,3 +1,4 @@
+import { StatusMessage } from './StatusMessage';
 import { useEffect, useState, type FormEvent } from 'react';
 import { send } from './api';
 import { useRemote } from './hooks';
@@ -42,7 +43,7 @@ export function Weaknesses({ snapshotId }: { snapshotId?: string }) {
       <label>Maximum recent games<input name="maximumGames" type="number" min={1} max={200} defaultValue={50} required /></label>
     </div><button className="primary" disabled={pending || active}>{pending ? 'Queuing…' : 'Find my patterns'}</button></form></Panel>}
     <ErrorNotice message={error || problem || snapshot?.error || ''} retry={reload} />
-    {active && <Panel><p role="status" aria-label="Insight status">{snapshot.state === 'queued' ? 'Waiting for completed game reviews…' : 'Checking patterns against your saved engine evidence…'}</p><button onClick={() => void send(`/insights/${snapshot.id}/cancel`).then(reload).catch(e => setProblem(e.message))}>Cancel insight review</button></Panel>}
+    {active && <Panel><StatusMessage aria-label="Insight status">{snapshot.state === 'queued' ? 'Waiting for completed game reviews…' : 'Checking patterns against your saved engine evidence…'}</StatusMessage><button onClick={() => void send(`/insights/${snapshot.id}/cancel`).then(reload).catch(e => setProblem(e.message))}>Cancel insight review</button></Panel>}
     {!snapshot && !error && <Panel className="empty"><h2>Start with analysed games.</h2><p>Complete a game review and select your colour, then generate your first evidence snapshot.</p><a href="#/games">Open your games</a></Panel>}
     {snapshot && !active && !result && <Panel><p>Insight review {snapshot.state}. Adjust the selection and try again.</p></Panel>}
     {result && <><Panel className="insight-context"><p className="eyebrow">SAVED EVIDENCE SNAPSHOT</p><h2>{result.selectedGames} of {result.matchingGames} matching games selected</h2>

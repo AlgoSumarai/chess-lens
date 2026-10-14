@@ -1,3 +1,4 @@
+import { StatusMessage } from './StatusMessage';
 import { useCallback, useEffect, useState } from 'react';
 import { api, send } from './api';
 import { ErrorNotice } from './App';
@@ -41,7 +42,7 @@ export function Coaching({ runId, ply, fen, level, modelOptIn }: { runId: string
   return <section className="grounded-coaching" aria-label="Saved decision coaching">
     <div className="section-title"><h3>Your next lesson</h3>{explanation && <span className="pill">{explanation.mode === 'factual' ? 'Factual coaching' : 'Model-selected coaching'}</span>}</div>
     <ErrorNotice message={error || job?.error || ''} retry={reload} />
-    {!explanation && !error && !job?.error && <p role="status">{job?.state === 'cancelled' ? 'Explanation stopped. Reopen this decision or retry.' : 'Preparing the explanation for this saved decision…'}</p>}
+    {!explanation && !error && !job?.error && <StatusMessage>{job?.state === 'cancelled' ? 'Explanation stopped. Reopen this decision or retry.' : 'Preparing the explanation for this saved decision…'}</StatusMessage>}
     {job?.state === 'cancelled' && <button onClick={reload}>Retry explanation</button>}
     {explanation && <>
       <p><strong>What happened.</strong> {explanation.whatHappened}</p>

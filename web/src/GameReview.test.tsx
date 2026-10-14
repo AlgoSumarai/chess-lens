@@ -10,7 +10,7 @@ const fixture = vi.hoisted(() => ({
 vi.mock('./hooks', () => ({ useRemote: () => ({ data: fixture, reload: vi.fn() }) }));
 vi.mock('./api', () => ({ api: vi.fn(), send: vi.fn() }));
 vi.mock('./analysis', () => ({ useAnalysis: () => ({ data: null, error: '', connected: false, reload: vi.fn() }) }));
-vi.mock('react-chessboard', () => ({ Chessboard: ({ options }: { options: { position: string } }) => <div data-testid="board-position">{options.position}</div> }));
+vi.mock('react-chessboard', async importOriginal => ({ ...(await importOriginal<typeof import('react-chessboard')>()), Chessboard: ({ options }: { options: { position: string } }) => <div data-testid="board-position">{options.position}</div> }));
 afterEach(() => vi.clearAllMocks());
 
 test('late server replies do not replace the selected notation, board or explanation', async () => {
