@@ -25,6 +25,7 @@ def main():
     parser.add_argument('--project', required=True)
     parser.add_argument('--url', default='http://localhost:8088')
     parser.add_argument('--output', default='.local/evidence/recovery/native-worker-database.json')
+    parser.add_argument('--exhaust-leases', action='store_true', help='Instead exercise four real worker terminations and the unchanged five-minute leases (about 20 minutes).')
     args = parser.parse_args()
     address = urllib.parse.urlparse(args.url)
     if not re.fullmatch(r'chesslens-[a-z0-9-]+-validation', args.project) or address.hostname not in ('localhost', '127.0.0.1') or address.scheme != 'http':
@@ -119,6 +120,62 @@ def main():
         partial = wait(lambda: (r if (r := api('/analysis/' + run))['state'] == 'running' and r['completedPlies'] >= 1 else None), 90, 'Real review did not produce a partial checkpoint')
         rows_query = f'''SELECT coalesce(json_agg(to_jsonb(m) ORDER BY "Ply"), '[]'::json) FROM "MoveAnalyses" m WHERE "RunId"='{run}'::uuid'''
         before = json.loads(sql(rows_query))
+        if args.exhaust_leases:
+            evidence['kind'] = 'actual native worker SIGKILL on all four mainline executions, unchanged lease clocks and exhaustion; original artificial game'
+            previous_count = 0
+            for attempt in range(1, 5):
+                def checkpoint():
+                    row = api('/analysis/' + run)
+                    executions = int(sql(f'''SELECT "Attempts" FROM "AnalysisRuns" WHERE "Id"='{run}'::uuid'''))
+                    if row['state'] == 'failed':
+                        raise AssertionError('Review failed before the intended execution checkpoint')
+                    return row if executions == attempt and row['state'] == 'running' and row['completedPlies'] > previous_count else None
+                checkpoint_run = wait(checkpoint, 420, 'Review did not resume after its actual lease expired')
+                saved = json.loads(sql(rows_query))
+                assert saved[:len(before)] == before
+                assert len(saved) < checkpoint_run['totalPlies'], 'Use a longer fixture to retain unfinished work for every termination'
+                assert len({row['Ply'] for row in saved}) == len(saved)
+                assert api('/games/' + game + '/analysis', {'profile': 'deep'}, 'POST')['id'] == run
+                run_count = int(sql(f'''SELECT count(*) FROM "AnalysisRuns" WHERE "GameId"='{game}'::uuid'''))
+                assert run_count == 1
+                top = docker('top', worker, '-eo', 'pid,comm').stdout.splitlines()[1:]
+                engine_pids = [int(line.split()[0]) for line in top if 'stockfish' in line.lower()]
+                worker_pid = int(docker('inspect', '--format', '{{.State.Pid}}', worker).stdout)
+                assert engine_pids
+                lease = sql(f'''SELECT "LeaseUntil" FROM "AnalysisRuns" WHERE "Id"='{run}'::uuid''')
+                docker('kill', '--signal', 'KILL', worker)
+                docker('stop', '--time', '2', worker)
+                wait(lambda: not any(Path('/proc/' + str(pid)).exists() for pid in [worker_pid, *engine_pids]), 10, 'Old worker or engine process survived')
+                # A final atomic checkpoint may commit between observing work
+                # and SIGKILL. Capture the durable prefix after termination.
+                saved = json.loads(sql(rows_query))
+                assert saved[:len(before)] == before
+                assert len(saved) < checkpoint_run['totalPlies']
+                assert len({row['Ply'] for row in saved}) == len(saved)
+                record('execution-killed', attempt=attempt, runId=run, completedPlies=len(saved),
+                       originalLeaseUntil=lease, oldProcessesReaped=True, duplicateSubmissionsReusedRun=True,
+                       prefixEvidenceUnchanged=True, duplicatePlies=0)
+                previous_count = len(saved)
+                docker('start', worker)
+                wait(lambda: request('/health/ready')[0] == 200, 180, 'Restarted worker did not become ready')
+                # No database timestamp, attempt or lease mutation is used here.
+                # The next loop observes the real persisted lease and claim.
+            final = wait(lambda: (r if (r := api('/analysis/' + run))['state'] == 'failed' else None), 420,
+                         'The fourth actual expired lease was not marked failed')
+            after = json.loads(sql(rows_query))
+            assert after == saved and after[:len(before)] == before
+            assert len({row['Ply'] for row in after}) == len(after)
+            assert int(sql(f'''SELECT "Attempts" FROM "AnalysisRuns" WHERE "Id"='{run}'::uuid''')) == 4
+            assert final['completedPlies'] == len(after) and final['error']
+            # Allow several scheduler passes, checking that terminal work stays terminal.
+            time.sleep(5)
+            assert api('/analysis/' + run)['state'] == 'failed'
+            assert int(sql(f'''SELECT "Attempts" FROM "AnalysisRuns" WHERE "Id"='{run}'::uuid''')) == 4
+            record('leases-exhausted', runId=run, attempts=4, savedPlies=len(after),
+                   terminalState='failed', originalLeaseClocksUnchanged=True,
+                   duplicatePlies=0, prefixEvidenceUnchanged=True, additionalExecution=False)
+            evidence['status'] = 'passed'
+            return
         top = docker('top', worker, '-eo', 'pid,comm').stdout.splitlines()[1:]
         engine_pids = [int(line.split()[0]) for line in top if 'stockfish' in line.lower()]
         host_pid = int(docker('inspect', '--format', '{{.State.Pid}}', worker).stdout)
