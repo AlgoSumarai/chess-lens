@@ -32,6 +32,29 @@ public sealed class PgnTests
         Assert.Contains("(1.d4", game.RawPgn);
     }
 
+    [Theory]
+    [InlineData("999999999999999999999:00:00")]
+    [InlineData("0:60:00")]
+    [InlineData("0:00:60")]
+    [InlineData("bad-clock")]
+    [InlineData("-1:00:00")]
+    [InlineData("١:00:00")]
+    public void Malformed_optional_clocks_leave_legal_games_and_original_annotations_available(string clock)
+    {
+        var raw = $"1.e4 {{[%clk {clock}]}} e5 1/2-1/2";
+        var game = reader.Parse(raw);
+        Assert.Equal(new[] { "e2e4", "e7e5" }, game.Moves.Select(m => m.Uci));
+        Assert.Null(game.Moves[0].ClockSeconds);
+        Assert.Equal(raw, game.RawPgn);
+    }
+
+    [Fact]
+    public void Valid_clock_conversion_does_not_overflow_integer_seconds()
+    {
+        var game = reader.Parse("1.e4 {[%clk 1000000:00:00.5]} e5 1/2-1/2");
+        Assert.Equal(3_600_000_000.5, game.Moves[0].ClockSeconds);
+    }
+
     [Fact]
     public void Identity_must_match_exactly_one_player()
     {

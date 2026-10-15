@@ -9,6 +9,9 @@ namespace ChessLens.Core.Imports;
 
 public sealed class ImportProcessor(LensDbContext db, PgnReader reader, ILogger<ImportProcessor>? logger = null)
 {
+    public const string RetryMessage = "Import interrupted. Retrying within the configured limit.";
+    public const string StoppedMessage = "Import stopped after four interrupted attempts. Saved games remain available. Submit your PGN again to retry.";
+
     public async Task<bool> RunNext(CancellationToken ct)
     {
         var token = Guid.NewGuid().ToString("N");
@@ -16,7 +19,7 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader, ILogger<
         await using (var tx = await db.Database.BeginTransactionAsync(ct))
         {
             await db.ImportJobs.Where(j => j.Source == "pgn" && j.State == "running" && j.LeaseUntil < DateTimeOffset.UtcNow && j.Attempts >= 4)
-                .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, "failed").SetProperty(j => j.Error, "Import stopped after four interrupted attempts.")
+                .ExecuteUpdateAsync(s => s.SetProperty(j => j.State, "failed").SetProperty(j => j.Error, StoppedMessage)
                     .SetProperty(j => j.Version, j => j.Version + 1).SetProperty(j => j.UpdatedAt, DateTimeOffset.UtcNow), ct);
             var job = await db.ImportJobs.FromSqlRaw("""
                 SELECT * FROM "ImportJobs"
@@ -102,8 +105,9 @@ public sealed class ImportProcessor(LensDbContext db, PgnReader reader, ILogger<
             var job = await db.ImportJobs.SingleOrDefaultAsync(j => j.Id == id && j.LeaseToken == token, ct);
             if (job is not null)
             {
-                job.State = e is ArgumentException || job.Attempts >= 4 ? "failed" : "queued";
-                job.Error = e is ArgumentException ? e.Message : "Import interrupted. Retrying within the configured limit.";
+                var permanent = e is ArgumentException || job.Attempts >= 4;
+                job.State = permanent ? "failed" : "queued";
+                job.Error = e is ArgumentException ? e.Message : permanent ? StoppedMessage : RetryMessage;
                 job.LeaseUntil = null;
                 Touch(job);
                 await db.SaveChangesAsync(ct);

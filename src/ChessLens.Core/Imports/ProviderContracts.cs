@@ -128,7 +128,7 @@ public static partial class ProviderContracts
                 var white = Child(Child(g, "players"), "white"); var black = Child(Child(g, "players"), "black");
                 var opening = Child(g, "opening"); var clock = Child(g, "clock");
                 var clocks = g.TryGetProperty("clocks", out var values) && values.ValueKind == JsonValueKind.Array
-                    ? values.EnumerateArray().Take(PgnReader.MaxPlies).Select(v => v.TryGetDouble(out var n) && n >= 0 && double.IsFinite(n) ? (double?)(n / 100) : null).ToArray() : null;
+                    ? values.EnumerateArray().Take(PgnReader.MaxPlies).Select(v => v.ValueKind == JsonValueKind.Number && v.TryGetDouble(out var n) && n >= 0 && double.IsFinite(n) ? (double?)(n / 100) : null).ToArray() : null;
                 var control = Number(clock, "initial") is { } initial && Number(clock, "increment") is { } increment ? $"{initial}+{increment}" : null;
                 records.Add(new(String(g, "pgn"), id, id is null ? null : "https://lichess.org/" + id, started, Timestamp(g, "lastMoveAt", true),
                     Rating(white), Rating(black), String(g, "speed"), Boolean(g, "rated"), control, String(g, "status"),

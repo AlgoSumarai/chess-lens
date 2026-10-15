@@ -2,7 +2,7 @@
 
 ChessLens imports completed games, analyses them with Stockfish, and turns recurring mistakes into evidence-backed practice.
 
-**Local release candidate; independent review pending.** The complete learning loop is implemented and locally verified. The [acceptance matrix](docs/acceptance-matrix.md) maps the [build brief](docs/build-brief.md) to code and evidence. See [the release record](docs/release-record.md), [offline startup](docs/release.md) and [the short demonstration](docs/demo.md). Final readiness requires the independent quality threshold in the [verification ledger](docs/verification.md).
+**Local release candidate; independent Round 1 failed required import/recovery gates.** The complete learning loop is implemented and locally verified. The [acceptance matrix](docs/acceptance-matrix.md) maps the [build brief](docs/build-brief.md) to code and evidence. See [the release record](docs/release-record.md), [offline startup](docs/release.md) and [the short demonstration](docs/demo.md). The [independent report](docs/quality-review.md) records 8.355/10 and three medium-severity findings; fixes, final regression and Round 2 remain required.
 
 The stack is C# / ASP.NET Core, PostgreSQL, a separate Stockfish worker, and React / TypeScript. No paid API or LLM key is required for the core workflow. Deployment stays local until explicitly requested.
 

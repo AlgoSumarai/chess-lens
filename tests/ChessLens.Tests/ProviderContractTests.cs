@@ -82,6 +82,22 @@ public sealed class ProviderContractTests
     }
 
     [Fact]
+    public void Optional_clock_json_types_do_not_discard_this_or_following_completed_records()
+    {
+        var first = LichessGame().Replace("\"clocks\":[30000,30100,29000,29800]",
+            "\"clocks\":[30000,\"bad-clock\",null,{},true,-1,1e400]");
+        var games = ProviderContracts.ParseLichess(first + "\n" + LichessGame("next1234"), Request with { Provider = "lichess" });
+        Assert.Equal(2, games.Length);
+        Assert.Equal(new double?[] { 300, null, null, null, null, null, null }, games[0].Clocks);
+        var parsed = games[0].Parse(new PgnReader(), "lichess");
+        Assert.Equal(300, parsed.Moves[0].ClockSeconds);
+        Assert.All(parsed.Moves.Skip(1), move => Assert.Null(move.ClockSeconds));
+        var following = games[1].Parse(new PgnReader(), "lichess");
+        Assert.Equal("next1234", following.ExternalId);
+        Assert.Equal(301, following.Moves[1].ClockSeconds);
+    }
+
+    [Fact]
     public async Task Http_cache_revalidates_etag_and_last_modified_then_respects_max_age()
     {
         var calls = 0;

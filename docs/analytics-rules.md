@@ -45,7 +45,7 @@ Each finding includes occurrence and eligible counts, affected games, loss assoc
 
 Snapshot requests return a job immediately. The worker uses PostgreSQL leases (three minutes), up to three attempts and idempotent terminal writes. One snapshot job may be active per owner; identical active requests reuse its ID. The quota is 20 submissions per rolling day. Cancellation and data deletion prevent an in-flight result from recreating a snapshot. No LLM or new engine search runs in the insight generator.
 
-Personalised puzzle validation and spaced review have separate [documented rules](puzzle-rules.md). Rating-aware coaching is specified in [coaching-rules.md](coaching-rules.md). Conversion/endgame rules are documented below; reports remain subsequent work.
+Personalised puzzle validation and spaced review have separate [documented rules](puzzle-rules.md). Rating-aware coaching is specified in [coaching-rules.md](coaching-rules.md). Conversion/endgame rules are documented below. Immutable weekly reports and comparable progress use the [report rules](reports-progress-rules.md).
 
 ## Conversion and endgame rules — v2
 

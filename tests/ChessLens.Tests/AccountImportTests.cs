@@ -183,6 +183,92 @@ public sealed class AccountImportTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task Malformed_optional_clock_does_not_block_later_valid_or_invalid_games()
+    {
+        using var client = await Account();
+        var prefix = $"[Event \"Original clock-boundary fixture {Guid.NewGuid()}\"]\n[White \"Learner\"]\n[Black \"Opponent\"]\n";
+        var first = prefix + "1.e4 {[%clk 999999999999999999999:00:00]} e5 1/2-1/2";
+        var invalid = "[White \"Illegal fixture\"]\n1.e5 e4 0-1";
+        var last = prefix + "1.d4 {[%clk 0:05:00]} d5 1/2-1/2";
+        var id = await Import(client, first + "\n\n" + invalid + "\n\n" + last);
+        await ProcessAll();
+        var job = await client.GetFromJsonAsync<JsonElement>($"/api/jobs/{id}");
+        Assert.Equal("completed", job.GetProperty("state").GetString());
+        Assert.Equal(2, job.GetProperty("imported").GetInt32());
+        Assert.Equal(3, job.GetProperty("processed").GetInt32());
+        Assert.Equal(2, Assert.Single(job.GetProperty("failures").EnumerateArray()).GetProperty("gameNumber").GetInt32());
+        var library = await client.GetFromJsonAsync<JsonElement>("/api/games");
+        Assert.Equal(2, library.GetProperty("total").GetInt32());
+        foreach (var item in library.GetProperty("items").EnumerateArray())
+        {
+            var game = await client.GetFromJsonAsync<JsonElement>($"/api/games/{item.GetProperty("id").GetGuid()}");
+            var move = game.GetProperty("moves")[0];
+            if (move.GetProperty("uci").GetString() == "e2e4")
+            {
+                Assert.Equal(JsonValueKind.Null, move.GetProperty("clockSeconds").ValueKind);
+                Assert.Contains("999999999999999999999", game.GetProperty("rawPgn").GetString());
+            }
+            else Assert.Equal(300, move.GetProperty("clockSeconds").GetDouble());
+        }
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var saved = await scope.ServiceProvider.GetRequiredService<LensDbContext>().ImportJobs.SingleAsync(j => j.Id == id);
+            Assert.Equal(1, saved.Attempts);
+        }
+        var duplicate = await Import(client, first + "\n\n" + last); await ProcessAll();
+        Assert.Equal(2, (await client.GetFromJsonAsync<JsonElement>($"/api/jobs/{duplicate}")).GetProperty("duplicates").GetInt32());
+        (await client.DeleteAsync("/api/account/data")).EnsureSuccessStatusCode();
+    }
+
+    [Theory]
+    [InlineData(0, "queued", true)]
+    [InlineData(3, "failed", false)]
+    public async Task Unexpected_import_errors_only_promise_retry_while_attempts_remain(int previousAttempts, string state, bool retry)
+    {
+        // Labelled corrupt-payload fixture exercises the actual outer exception/attempt boundary.
+        using var client = await Account();
+        var owner = (await client.GetFromJsonAsync<JsonElement>("/api/account/me")).GetProperty("id").GetString()!;
+        var job = new ImportJob { OwnerId = owner, PayloadJson = "{", Attempts = previousAttempts };
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LensDbContext>(); db.ImportJobs.Add(job); await db.SaveChangesAsync();
+            await Assert.ThrowsAsync<JsonException>(() => new ImportProcessor(db, new PgnReader()).RunNext(CancellationToken.None));
+        }
+        var saved = await client.GetFromJsonAsync<JsonElement>($"/api/jobs/{job.Id}");
+        Assert.Equal(state, saved.GetProperty("state").GetString());
+        var error = saved.GetProperty("error").GetString()!;
+        Assert.Equal(retry, error.Contains("Retrying", StringComparison.Ordinal));
+        if (!retry) Assert.Contains("Submit your PGN again", error);
+        (await client.DeleteAsync("/api/account/data")).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Historical_failed_pgn_retry_message_is_read_as_an_actionable_stopped_state()
+    {
+        using var client = await Account();
+        var owner = (await client.GetFromJsonAsync<JsonElement>("/api/account/me")).GetProperty("id").GetString()!;
+        var job = new ImportJob { OwnerId = owner, PayloadJson = "{}", State = "failed", Attempts = 4,
+            Error = "Import interrupted. Retrying within the configured limit." };
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LensDbContext>(); db.ImportJobs.Add(job); await db.SaveChangesAsync();
+        }
+        var saved = await client.GetFromJsonAsync<JsonElement>($"/api/jobs/{job.Id}");
+        var listed = Assert.Single((await client.GetFromJsonAsync<JsonElement>("/api/jobs")).EnumerateArray());
+        foreach (var view in new[] { saved, listed })
+        {
+            Assert.DoesNotContain("Retrying", view.GetProperty("error").GetString());
+            Assert.Contains("Submit your PGN again", view.GetProperty("error").GetString());
+        }
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var stored = await scope.ServiceProvider.GetRequiredService<LensDbContext>().ImportJobs.SingleAsync(j => j.Id == job.Id);
+            Assert.Equal(job.Error, stored.Error); // Read compatibility does not rewrite historical records.
+        }
+        (await client.DeleteAsync("/api/account/data")).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task Interrupted_import_recovers_and_repeated_execution_keeps_one_association()
     {
         using var client = await Account();

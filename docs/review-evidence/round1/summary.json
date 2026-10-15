@@ -1,0 +1,78 @@
+{
+  "round": 1,
+  "maximumRounds": 3,
+  "reviewedAtUtc": "2026-10-15T02:46:50.580929+00:00",
+  "inspectedCommit": "9cbcc22b00544e8329745a910aea8fbfa34f9987",
+  "applicationCommit": "bee92d0c659a9476ec315820467193f394968be0",
+  "decision": "FAIL",
+  "scores": {
+    "code": 8.3,
+    "domain": 8.4,
+    "interface": 8.1,
+    "reliabilitySecurityAccessibility": 8.5,
+    "verificationHandover": 8.8
+  },
+  "weightedScore": 8.355,
+  "requiredGaps": [
+    "IMP-01/IMP-04: malformed optional clocks abort mixed batches",
+    "UI-04: exhausted PGN failure promises retry without an actionable terminal message"
+  ],
+  "findings": [
+    {
+      "id": "R1",
+      "priority": "P2",
+      "summary": "Oversized optional PGN clock prevents subsequent valid games importing"
+    },
+    {
+      "id": "R2",
+      "priority": "P2",
+      "summary": "Wrong-type optional Lichess clock aborts whole NDJSON parsing"
+    },
+    {
+      "id": "R3",
+      "priority": "P2",
+      "summary": "Failed exhausted PGN job incorrectly promises automatic retry"
+    }
+  ],
+  "independentChecks": {
+    "backendPassed": 214,
+    "backendFailed": 0,
+    "backendSkipped": 0,
+    "componentPassed": 10,
+    "productionBuild": "passed",
+    "representativeDesktopCasesPassed": 2,
+    "smallMobileControlCasesPassed": 1,
+    "defaultAxeScans": 8,
+    "defaultAxeViolations": 0,
+    "ordinaryJourneyWcagObservations": 33,
+    "ordinaryJourneyViolations": 0,
+    "ordinaryJourneyOverflowObservations": 0,
+    "liveProvidersPassed": 2,
+    "platformImageIdsVerified": 8,
+    "sourceMaterialsHashesPerArchitecture": 174,
+    "realUciChecksPerArchitecture": 3,
+    "exactDependencyLicences": {
+      "npm": 30,
+      "nuget": 63
+    },
+    "httpsReadOnly": "passed"
+  },
+  "uiScope": "Actual desktop and touch-emulated mobile learning loops reached frozen progress. Latest desktop script then failed an excluded exploratory root-CSS-zoom assertion; earlier reviewer locator/baseURL errors are retained. These are not recorded as passing browser test cases or native-browser-zoom evidence. Three separately executed repository browser cases passed.",
+  "missingScopes": [
+    "passing malformed-clock/exhausted-state regression evidence",
+    "final post-review source handover",
+    "hosted GitHub action execution",
+    "physical Windows/native ARM hardware",
+    "NVDA/VoiceOver/braille",
+    "paid live model call",
+    "public deployment"
+  ],
+  "screenshotSha256": {
+    "malformed-clock-mixed-import.png": "77dd6934c03edfb0854d56bae5988645a3d627dae7809ffbcbcccd226589ac15",
+    "desktop-review-coaching.png": "e895d7f819dfb719ec2bf45304a1b6fe99fca5836aee0b1d5c08cada8907277e",
+    "mobile-practice-unassisted-complete.png": "ae16756b877cecaf61a864e413fdce17918ffa778edda5b040e5a469eaf1333d",
+    "practice-three-decisions-desktop.png": "b4b2f8009c668e885e289b0c20dbaaf3289d1da76bf34718e6e56ff4a3811720",
+    "comparable-progress-desktop.png": "abe033bf6490655e42ec907b45139624fd83177cf07621273d6bb5046d5418ae"
+  },
+  "reportSha256": "d54819d23c80c0240424dab9ac5eded638904dacca4435f00f1a895c6b3ad62c"
+}

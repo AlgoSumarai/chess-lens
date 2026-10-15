@@ -88,6 +88,35 @@ public sealed class ProviderPipelineTests(DatabaseFixture fixture)
     }
 
     [Fact]
+    public async Task Wrong_type_optional_lichess_clocks_survive_durable_checkpoint_and_do_not_block_later_games()
+    {
+        using var client = await Account(); var id = await Submit(client, "lichess");
+        var firstId = Guid.NewGuid().ToString("N")[..8]; var nextId = Guid.NewGuid().ToString("N")[..8];
+        var first = ProviderContractTests.LichessGame(firstId).Replace("\"clocks\":[30000,30100,29000,29800]", "\"clocks\":[\"bad-clock\",null,{},30000]");
+        var transport = new FixtureTransport("", first + "\n" + ProviderContractTests.LichessGame(nextId));
+        await Drain(transport);
+        var saved = await client.GetFromJsonAsync<JsonElement>($"/api/jobs/{id}");
+        Assert.Equal("completed", saved.GetProperty("state").GetString());
+        Assert.Equal(2, saved.GetProperty("imported").GetInt32());
+        Assert.Equal(2, saved.GetProperty("processed").GetInt32());
+        Assert.Empty(saved.GetProperty("failures").EnumerateArray());
+        var library = await client.GetFromJsonAsync<JsonElement>("/api/games");
+        Assert.Equal(2, library.GetProperty("total").GetInt32());
+        foreach (var item in library.GetProperty("items").EnumerateArray())
+        {
+            var game = await client.GetFromJsonAsync<JsonElement>($"/api/games/{item.GetProperty("id").GetGuid()}");
+            if (game.GetProperty("externalId").GetString() == firstId)
+            {
+                Assert.All(game.GetProperty("moves").EnumerateArray().Take(3), move => Assert.Equal(JsonValueKind.Null, move.GetProperty("clockSeconds").ValueKind));
+                Assert.Equal(300, game.GetProperty("moves")[3].GetProperty("clockSeconds").GetDouble());
+            }
+            else Assert.Equal(300, game.GetProperty("moves")[0].GetProperty("clockSeconds").GetDouble());
+        }
+        Assert.Single(transport.Requests); // The persisted checkpoint supplies the validation phase.
+        (await client.DeleteAsync("/api/account/data")).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task Two_workers_and_owners_delivering_the_same_source_keep_one_game_and_each_association()
     {
         using var alice = await Account(); using var bob = await Account(); var id = NewId();

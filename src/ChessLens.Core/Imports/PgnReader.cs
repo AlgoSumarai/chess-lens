@@ -98,12 +98,15 @@ public sealed partial class PgnReader
             if (token.Kind == 'c')
             {
                 var clock = ClockRegex().Match(token.Text);
-                if (moves.Count > 0 && clock.Success)
+                if (moves.Count > 0 && clock.Success &&
+                    int.TryParse(clock.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var hours) &&
+                    int.TryParse(clock.Groups[2].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var minutes) && minutes < 60 &&
+                    double.TryParse(clock.Groups[3].Value, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var seconds) &&
+                    double.IsFinite(seconds) && seconds is >= 0 and < 60)
                 {
-                    var minutes = int.Parse(clock.Groups[2].Value, CultureInfo.InvariantCulture);
-                    var seconds = double.Parse(clock.Groups[3].Value, CultureInfo.InvariantCulture);
-                    if (minutes < 60 && seconds < 60)
-                        moves[^1].ClockSeconds = int.Parse(clock.Groups[1].Value, CultureInfo.InvariantCulture) * 3600 + minutes * 60 + seconds;
+                    // Timing is optional. Malformed annotations stay in the owner's source,
+                    // but cannot abort a legal game or overflow the hours-to-seconds arithmetic.
+                    moves[^1].ClockSeconds = hours * 3600d + minutes * 60 + seconds;
                 }
                 continue;
             }

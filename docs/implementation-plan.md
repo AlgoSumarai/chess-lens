@@ -36,7 +36,7 @@ The authoritative scope is [the full build brief](build-brief.md). All six miles
 
 ## Status
 
-Foundation, mainline/interactive analysis, core weakness snapshots and personal puzzle training are implemented, with backend/component/desktop/mobile container checks. Puzzle attempts retain hints/outcomes and spaced-review dates; real engine fixtures check short mating and material objectives. Draw history, compatible caching, partial-review recovery, versioned classification and coherent MultiPV batches have regression coverage. Provider imports, grounded coaching, conversion/endgame detectors and persistent mistake practice now have fresh slice evidence below. Reports/progress and release work remain required. No release gate is claimed complete. See `docs/verification.md` for actual evidence and limitations.
+All required vertical slices and release tooling are implemented, with dated native/ARM64, recovery, security, accessibility, licence/source, restore/cutover, benchmark and clean-checkout evidence in [verification](verification.md). Independent Round 1 against 9cbcc22 scored 8.355/10 but failed the required malformed-clock mixed-import and exhausted-recovery gates. Its exact report is retained in [quality review](quality-review.md). Focused corrections pass 59 parser/provider/account/import checks; full rebuilt integration and independent Round 2 remain required. One of at most three review rounds has completed. The dated sections below are historical delivery records, not the current completion state.
 
 ## Goal execution — 13 October 2026
 

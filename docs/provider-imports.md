@@ -35,3 +35,7 @@ python3 scripts/check-provider-imports.py --url http://localhost:8088
 ```
 
 It creates a labelled local test account, imports two public completed games from each provider, checks resync and immutable records, and deletes its imported test data. A missing provider is recorded as an unverified gate and exits unsuccessfully. See [verification](verification.md) for dated evidence.
+
+## Optional malformed timing
+
+Clocks are optional metadata. Nonnumeric, negative or nonfinite Lichess clock elements become unavailable timing for that move; they do not discard an otherwise legal completed game or later NDJSON records. PGN clock annotations use nonthrowing invariant conversion and safe floating-point hours-to-seconds arithmetic. Unparseable hours or invalid minute/second fields remain unknown timing while the owner’s exact original PGN is retained. Illegal games still have individual errors, and later legal games continue.

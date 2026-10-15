@@ -131,7 +131,10 @@ public static class GameEndpoints
     }
 
     public static object JobView(ImportJob j) => new { j.Id, j.Source, j.State, j.Imported, j.Duplicates, j.Processed, j.Total,
-        failures = JsonSerializer.Deserialize<ImportFailure[]>(j.FailuresJson), j.Error, j.Version, j.CancelRequested, j.Phase,
+        failures = JsonSerializer.Deserialize<ImportFailure[]>(j.FailuresJson),
+        // Older exhausted jobs retain their original stored text; present their actual terminal state.
+        error = j.Source == "pgn" && j.State == "failed" && j.Error == ImportProcessor.RetryMessage ? ImportProcessor.StoppedMessage : j.Error,
+        j.Version, j.CancelRequested, j.Phase,
         j.NextAttemptAt, j.CreatedAt, j.UpdatedAt,
         request = j.Source == "pgn" ? null : JsonSerializer.Deserialize<ProviderImportRequest>(j.PayloadJson) };
 }
