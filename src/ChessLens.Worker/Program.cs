@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 if (args.Contains("--healthcheck")) { Environment.ExitCode = await WorkerHealth.CheckLocal(); return; }
 var builder = Host.CreateApplicationBuilder(args);
 builder.Logging.AddJsonConsole(o => { o.IncludeScopes = true; o.TimestampFormat = "O"; });
-builder.Services.AddDbContext<LensDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Database")
-    ?? throw new InvalidOperationException("ConnectionStrings__Database is required.")));
+var databaseConnection = DatabaseConfiguration.ConnectionString(builder.Configuration);
+builder.Services.AddDbContext<LensDbContext>(o => o.UseNpgsql(databaseConnection));
 builder.Services.AddSingleton<PgnReader>();
 builder.Services.AddScoped<ImportProcessor>();
 builder.Services.AddSingleton<IProviderHttpClient, ProviderHttpClient>();
 builder.Services.AddScoped<ProviderImportProcessor>();
 builder.Services.Configure<EngineOptions>(builder.Configuration.GetSection("Stockfish"));
-builder.Services.AddSingleton(new EngineSlots(builder.Configuration.GetConnectionString("Database")!));
+builder.Services.AddSingleton(new EngineSlots(databaseConnection));
 builder.Services.AddOptions<AnalysisOptions>().Bind(builder.Configuration.GetSection("Analysis"))
     .Validate(o => o.InaccuracyCentipawns >= 1 && o.MistakeCentipawns > o.InaccuracyCentipawns &&
         o.BlunderCentipawns > o.MistakeCentipawns && o.BlunderCentipawns <= 10_000, "Classification thresholds must be strictly increasing.")

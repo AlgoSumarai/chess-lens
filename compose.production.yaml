@@ -1,0 +1,113 @@
+# Locally reviewable single-host HTTPS deployment. No service binds publicly by default.
+x-api-environment: &api-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;GSS Encryption Mode=Disable
+  Database__PasswordFile: /run/secrets/app_password
+  AllowedOrigins: https://${CHESSLENS_PUBLIC_AUTHORITY:?Set the exact public HTTPS authority including a non-default port}
+  # The private health command uses loopback; nginx enforces the public authority.
+  AllowedHosts: ${CHESSLENS_PUBLIC_HOST:?Set the exact public hostname};127.0.0.1
+  ReverseProxy__KnownProxies__0: ${CHESSLENS_PROXY_IP:-172.30.14.10}
+
+services:
+  database:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: chesslens
+      POSTGRES_USER: chesslens_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/admin_password
+    secrets: [admin_password, app_password, migration_password]
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./deploy/database-roles.sh:/docker-entrypoint-initdb.d/10-chesslens-roles.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -h 127.0.0.1 -U chesslens_admin -d chesslens]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build: { context: ., target: api }
+    environment:
+      <<: *api-environment
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens_migrator;GSS Encryption Mode=Disable
+      Database__PasswordFile: /run/secrets/migration_password
+    secrets: [migration_password]
+    command: [--migrate]
+    depends_on:
+      database: { condition: service_healthy }
+
+  api:
+    build: { context: ., target: api }
+    environment: *api-environment
+    secrets: [app_password]
+    volumes: [protection-keys:/app/keys]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, dotnet, ChessLens.Api.dll, --healthcheck]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
+    mem_limit: 512m
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., target: worker }
+    environment:
+      ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;GSS Encryption Mode=Disable
+      Database__PasswordFile: /run/secrets/app_password
+    secrets: [app_password]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: [CMD, dotnet, ChessLens.Worker.dll, --healthcheck]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
+    cpus: 2
+    mem_limit: 1g
+    restart: unless-stopped
+
+  frontend:
+    build: { context: web }
+    environment:
+      CHESSLENS_PUBLIC_HOST: ${CHESSLENS_PUBLIC_HOST:?Set the exact public hostname}
+      CHESSLENS_PUBLIC_AUTHORITY: ${CHESSLENS_PUBLIC_AUTHORITY:?Set the exact HTTPS authority}
+      NGINX_ENVSUBST_FILTER: ^CHESSLENS_PUBLIC_
+    ports:
+      - "${CHESSLENS_BIND_ADDRESS:-127.0.0.1}:${CHESSLENS_HTTP_PORT:-8080}:8080"
+      - "${CHESSLENS_BIND_ADDRESS:-127.0.0.1}:${CHESSLENS_HTTPS_PORT:-8443}:8443"
+    volumes:
+      - ./deploy/nginx-tls.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${CHESSLENS_TLS_DIR:?Set the TLS certificate directory}/fullchain.pem:/etc/nginx/tls/fullchain.pem:ro
+      - ${CHESSLENS_TLS_DIR:?Set the TLS certificate directory}/privkey.pem:/etc/nginx/tls/privkey.pem:ro
+    networks:
+      default:
+        ipv4_address: ${CHESSLENS_PROXY_IP:-172.30.14.10}
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, wget, -q, -T, '4', -O, /dev/null, http://127.0.0.1:8081/health/ready]
+      interval: 10s
+      timeout: 5s
+      start_period: 180s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  default:
+    ipam:
+      config: [{ subnet: "${CHESSLENS_SUBNET:-172.30.14.0/24}" }]
+volumes:
+  postgres-data:
+  protection-keys:
+secrets:
+  admin_password:
+    file: ${CHESSLENS_SECRETS_DIR:-.local/production-secrets}/admin-password
+  app_password:
+    file: ${CHESSLENS_SECRETS_DIR:-.local/production-secrets}/app-password
+  migration_password:
+    file: ${CHESSLENS_SECRETS_DIR:-.local/production-secrets}/migration-password

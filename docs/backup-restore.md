@@ -2,6 +2,14 @@
 
 Use Python 3 and the native Linux Docker Engine `default` context, from the repository root. On Windows 11, run these commands inside the documented Ubuntu WSL 2 checkout. The script selects the exact Compose project by service labels. It never reads a password into a command argument or prints database diagnostics to the console.
 
+For the HTTPS role layout, add `--database-user chesslens_admin` before the
+`create`/`restore` command. Restore with `--owner-role chesslens_migrator
+--runtime-role chesslens` to retain separate migration ownership and runtime
+DML privileges in the new database. Both roles must already exist. The helper
+checks all restored table fingerprints as that runtime role. Role secrets and
+cluster configuration are deliberately separate from the backup. See the
+[deployment and copy-cutover instructions](deployment.md#upgrades-and-restoring-a-copy).
+
 Keep backups in a private directory on the Linux filesystem. They contain account password hashes, original private PGNs, saved evidence and Data Protection key material. A filesystem permission mask does not encrypt a backup; use your protected backup storage and keep its access separate from public release artifacts. Do not place a backup in a Git checkout tracked directory or a public artifact store.
 
 ```sh

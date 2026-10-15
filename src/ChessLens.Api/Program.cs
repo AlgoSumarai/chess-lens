@@ -21,6 +21,7 @@ if (args.Contains("--healthcheck"))
     return;
 }
 var builder = WebApplication.CreateBuilder(args);
+var hostingSecurity = HostingSecurity.Configure(builder);
 builder.Logging.AddJsonConsole(o => { o.IncludeScopes = true; o.TimestampFormat = "O"; });
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 12 * 1024 * 1024);
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -28,8 +29,7 @@ builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.RespectNullableAnnotations = true;
     o.SerializerOptions.RespectRequiredConstructorParameters = true;
 });
-builder.Services.AddDbContext<LensDbContext>(o => o.UseNpgsql(builder.Configuration.GetConnectionString("Database")
-    ?? throw new InvalidOperationException("ConnectionStrings__Database is required.")));
+builder.Services.AddDbContext<LensDbContext>(o => o.UseNpgsql(DatabaseConfiguration.ConnectionString(builder.Configuration)));
 builder.Services.AddIdentity<AppUser, IdentityRole>(o =>
 {
     o.User.RequireUniqueEmail = true;
@@ -39,14 +39,20 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(o =>
 }).AddEntityFrameworkStores<LensDbContext>().AddDefaultTokenProviders();
 builder.Services.ConfigureApplicationCookie(o =>
 {
-    o.Cookie.Name = "chesslens.session"; o.Cookie.HttpOnly = true; o.Cookie.SameSite = SameSiteMode.Strict;
-    o.Cookie.SecurePolicy = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing") ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+    o.Cookie.Name = hostingSecurity.RequireHttps ? "__Host-chesslens.session" : "chesslens.session";
+    o.Cookie.HttpOnly = true; o.Cookie.SameSite = SameSiteMode.Strict; o.Cookie.Path = "/";
+    o.Cookie.SecurePolicy = hostingSecurity.RequireHttps ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
     o.ExpireTimeSpan = TimeSpan.FromHours(8);
     o.Events.OnRedirectToLogin = c => { c.Response.StatusCode = 401; return Task.CompletedTask; };
     o.Events.OnRedirectToAccessDenied = c => { c.Response.StatusCode = 403; return Task.CompletedTask; };
 });
 builder.Services.AddDataProtection().SetApplicationName("ChessLens").PersistKeysToFileSystem(new DirectoryInfo(builder.Configuration["DataProtectionPath"] ?? ".local/keys"));
-builder.Services.AddAntiforgery(o => { o.HeaderName = "X-CSRF-TOKEN"; o.Cookie.SameSite = SameSiteMode.Strict; });
+builder.Services.AddAntiforgery(o =>
+{
+    o.HeaderName = "X-CSRF-TOKEN"; o.Cookie.SameSite = SameSiteMode.Strict; o.Cookie.HttpOnly = true; o.Cookie.Path = "/";
+    if (hostingSecurity.RequireHttps) o.Cookie.Name = "__Host-chesslens.csrf";
+    o.Cookie.SecurePolicy = hostingSecurity.RequireHttps ? CookieSecurePolicy.Always : CookieSecurePolicy.SameAsRequest;
+});
 builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
 builder.Services.Configure<InsightOptions>(builder.Configuration.GetSection("Insights"));
@@ -70,6 +76,7 @@ if (args.Contains("--migrate"))
     return;
 }
 app.UseExceptionHandler();
+if (hostingSecurity.HasTrustedProxy) app.UseForwardedHeaders();
 app.Use(async (ctx, next) =>
 {
     using var scope = app.Logger.BeginScope(new Dictionary<string, object> { ["CorrelationId"] = ctx.TraceIdentifier });
@@ -80,13 +87,24 @@ app.Use(async (ctx, next) =>
     ctx.Response.Headers["Cache-Control"] = "no-store";
     await next();
 });
+if (hostingSecurity.RequireHttps)
+{
+    app.Use(async (ctx, next) =>
+    {
+        if (!ctx.Request.IsHttps && !ctx.Request.Path.StartsWithSegments("/health"))
+        {
+            await Results.Problem(statusCode: 400, title: "HTTPS is required", detail: "Open the secure application address.").ExecuteAsync(ctx);
+            return;
+        }
+        await next();
+    });
+}
 app.UseAuthentication();
 app.Use(async (ctx, next) =>
 {
     if (ctx.Request.Path.StartsWithSegments("/hubs") && ctx.Request.Headers.Origin is { Count: > 0 } origins)
     {
-        var allowed = (builder.Configuration["AllowedOrigins"] ?? "http://localhost:8088,http://127.0.0.1:8088,http://127.0.0.1:5173,http://localhost:5173").Split(',');
-        if (!allowed.Contains(origins.ToString(), StringComparer.Ordinal)) { ctx.Response.StatusCode = 403; return; }
+        if (!hostingSecurity.AllowedOrigins.Contains(origins.ToString(), StringComparer.Ordinal)) { ctx.Response.StatusCode = 403; return; }
     }
     await next();
 });

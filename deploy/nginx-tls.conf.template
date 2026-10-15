@@ -1,0 +1,46 @@
+include /etc/nginx/chesslens-upstream.conf;
+
+server {
+    listen 8080;
+    server_name ${CHESSLENS_PUBLIC_HOST};
+    if ($host != "${CHESSLENS_PUBLIC_HOST}") { return 421; }
+    return 308 https://${CHESSLENS_PUBLIC_AUTHORITY}$request_uri;
+}
+
+server {
+    listen 8443 ssl;
+    server_name ${CHESSLENS_PUBLIC_HOST};
+    if ($http_host != "${CHESSLENS_PUBLIC_AUTHORITY}") { return 421; }
+    ssl_certificate /etc/nginx/tls/fullchain.pem;
+    ssl_certificate_key /etc/nginx/tls/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_tickets off;
+    root /usr/share/nginx/html;
+    client_max_body_size 12m;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    add_header X-Frame-Options DENY always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" always;
+    location /api/ {
+        proxy_pass http://chesslens_api;
+        include /etc/nginx/chesslens-proxy-headers.conf;
+    }
+    location /hubs/ {
+        proxy_pass http://chesslens_api;
+        include /etc/nginx/chesslens-proxy-headers.conf;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 120s;
+    }
+    location /health/ { proxy_pass http://chesslens_api; include /etc/nginx/chesslens-proxy-headers.conf; }
+    location / { try_files $uri $uri/ /index.html; }
+}
+
+# Container-only readiness; this port is never published.
+server {
+    listen 127.0.0.1:8081;
+    location /health/ { proxy_pass http://chesslens_api; include /etc/nginx/chesslens-proxy-headers.conf; }
+    location / { return 404; }
+}

@@ -122,3 +122,19 @@ Session states are `preparing`, `active`, `waiting`, `completed`, `failed`, `can
 Each result stores selected/matching counts, W/D/L/unknown results, coverage, independent compatible groups, unique verified-error and category-specific denominators, supported/insufficient prior-period comparisons, source/pool rating observations, separate training outcomes and an evidence-based practice plan. Representative decisions link to exact `gameId/runId/ply`. `jobProgress` adds `kind:"report"`, snapshot ID/version/state; HTTP reconciles saved state after missed notifications. All mutations require CSRF and every route/subscription is owner-scoped. See [report/progress rules](reports-progress-rules.md) for calendar, sample, quota, comparison and immutable-revision semantics.
 
 Game detail adds `annotationState:"owned"|"public"|"unattributed"`. Uploaded PGN `rawPgn` and move clocks come only from the authenticated owner's first upload. An older unattributed game returns canonical PGN/missing clocks and can recover its own annotations through deduplicated reimport; restricted preservation bytes have no endpoint. Report v2 freezes owner clock snapshots. Retrying a completed report returns it unchanged; retrying an unfinished older-rules report returns 409 with a fresh-selection action. See [annotation isolation](pgn-annotation-isolation.md).
+
+## Production HTTPS boundary
+
+In Production/Staging, application routes require HTTPS; the private `/health`
+checks also accept internal HTTP. A plain application request returns 400 with
+an HTTPS action. The API trusts address/scheme forwarding only from configured
+`ReverseProxy:KnownProxies` literal addresses, one hop with matching header
+counts. nginx replaces those headers and preserves Host/port on API and hub
+requests. Production startup requires explicit hosts and HTTPS origins.
+
+Production authentication/CSRF cookies use `__Host-chesslens.session` and
+`__Host-chesslens.csrf`, Secure/HttpOnly/SameSite=Strict, root path and no Domain.
+All prior CSRF, owner, quota and exact-origin rules continue to apply. Browser
+origins are exact authorities, including a non-default port. Development and
+Testing retain their loopback HTTP cookie behavior. See [deployment](deployment.md)
+for file-mounted database credentials, role privileges and real local TLS proof.

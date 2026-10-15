@@ -53,10 +53,10 @@ def identifier(value):
 
 class Snapshot:
     """Keep one read-only exported snapshot open for both pg_dump and fingerprints."""
-    def __init__(self, database_container, database):
+    def __init__(self, database_container, database, database_user="chesslens"):
         self.process = subprocess.Popen([
             "docker", "--context", "default", "exec", "-i", "-e", "PGCONNECT_TIMEOUT=10",
-            database_container, "psql", "-X", "-A", "-t", "-q", "-U", "chesslens",
+            database_container, "psql", "-X", "-A", "-t", "-q", "-U", database_user,
             "-d", database, "-v", "ON_ERROR_STOP=1"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
@@ -104,10 +104,10 @@ class Snapshot:
 
 
 @contextmanager
-def snapshot(database_container, database):
+def snapshot(database_container, database, database_user="chesslens"):
     transaction = None
     try:
-        transaction = Snapshot(database_container, database)
+        transaction = Snapshot(database_container, database, database_user)
         yield transaction
     finally:
         if transaction:
@@ -135,20 +135,21 @@ def create(args, database_container):
     target = args.output.resolve()
     target.mkdir(mode=0o700, parents=False, exist_ok=False)
     started = utc()
-    with snapshot(database_container, "chesslens") as transaction:
+    with snapshot(database_container, "chesslens", args.database_user) as transaction:
         version = transaction.query("SHOW server_version;")[0]
         exported = transaction.query("SELECT pg_export_snapshot();")[0]
         if not re.fullmatch(r"[A-Fa-f0-9]+-[A-Fa-f0-9]+-[0-9]+", exported):
             raise ValueError("Unexpected PostgreSQL snapshot identifier.")
         tables = transaction.fingerprints()
         with private_file(target / "database.dump") as stream:
-            docker("exec", database_container, "pg_dump", "-U", "chesslens", "-d", "chesslens",
+            docker("exec", database_container, "pg_dump", "-U", args.database_user, "-d", "chesslens",
                    "--format=custom", "--no-owner", "--no-acl", f"--snapshot={exported}", stdout=stream)
     with private_file(target / "protection-keys.tar") as stream:
         docker("exec", api, "tar", "-C", "/app/keys", "-cf", "-", ".", stdout=stream)
     manifest = {
         "format": 1, "startedUtc": started, "completedUtc": utc(), "project": args.project,
         "database": "chesslens", "postgresVersion": version,
+        "backupDatabaseRole": args.database_user,
         "apiImage": output("inspect", "--format", "{{.Image}}", api),
         "files": {name: sha256(target / name) for name in ("database.dump", "protection-keys.tar")},
         "tables": tables, "keys": validate_keys(target / "protection-keys.tar"),
@@ -173,17 +174,33 @@ def restore(args, database_container):
             raise ValueError(f"Backup integrity mismatch: {name}.")
     if validate_keys(source / "protection-keys.tar") != manifest["keys"]:
         raise ValueError("Protection key integrity mismatch.")
-    exists = output("exec", database_container, "psql", "-X", "-A", "-t", "-U", "chesslens", "-d", "postgres",
+    exists = output("exec", database_container, "psql", "-X", "-A", "-t", "-U", args.database_user, "-d", "postgres",
                     "-c", f"SELECT datname FROM pg_database WHERE datname='{args.database}';")
     volumes = output("volume", "ls", "--format", "{{.Name}}").splitlines()
     if exists or args.keys_volume in volumes:
         raise ValueError("Restore targets must both be new. Existing databases and volumes are never overwritten.")
-    output("exec", database_container, "psql", "-X", "-U", "chesslens", "-d", "postgres", "-v", "ON_ERROR_STOP=1",
-           "-c", f"CREATE DATABASE {identifier(args.database)} TEMPLATE template0;")
+    for role in (args.owner_role, args.runtime_role):
+        if role and output("exec", database_container, "psql", "-X", "-At", "-U", args.database_user, "-d", "postgres",
+                           "-c", f"SELECT rolname FROM pg_roles WHERE rolname='{role}';") != role:
+            raise ValueError("The selected restore roles must already exist; role secrets are not part of this backup.")
+    owner = f" OWNER {identifier(args.owner_role)}" if args.owner_role else ""
+    output("exec", database_container, "psql", "-X", "-U", args.database_user, "-d", "postgres", "-v", "ON_ERROR_STOP=1",
+           "-c", f"CREATE DATABASE {identifier(args.database)}{owner} TEMPLATE template0;")
+    restore_role = ("--role", args.owner_role) if args.owner_role else ()
     with (source / "database.dump").open("rb") as stream:
-        docker("exec", "-i", database_container, "pg_restore", "-U", "chesslens", "-d", args.database,
-               "--no-owner", "--no-acl", "--exit-on-error", stdin=stream, stdout=subprocess.DEVNULL)
-    with snapshot(database_container, args.database) as transaction:
+        docker("exec", "-i", database_container, "pg_restore", "-U", args.database_user, "-d", args.database,
+               "--no-owner", "--no-acl", "--exit-on-error", *restore_role, stdin=stream, stdout=subprocess.DEVNULL)
+    if args.runtime_role:
+        runtime, migration = identifier(args.runtime_role), identifier(args.owner_role)
+        output("exec", database_container, "psql", "-X", "-U", args.database_user, "-d", args.database, "-v", "ON_ERROR_STOP=1", "-c",
+               f"""REVOKE ALL ON DATABASE {identifier(args.database)} FROM PUBLIC;
+               GRANT CONNECT ON DATABASE {identifier(args.database)} TO {runtime}, {migration};
+               GRANT USAGE ON SCHEMA public TO {runtime};
+               GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {runtime};
+               GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {runtime};
+               ALTER DEFAULT PRIVILEGES FOR ROLE {migration} IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {runtime};
+               ALTER DEFAULT PRIVILEGES FOR ROLE {migration} IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {runtime};""")
+    with snapshot(database_container, args.database, args.runtime_role or args.database_user) as transaction:
         restored = transaction.fingerprints()
     if restored != manifest["tables"]:
         raise ValueError("Restored table counts/content differ from the exported backup snapshot; targets retained for inspection.")
@@ -213,6 +230,7 @@ def restore(args, database_container):
         raise ValueError("Restored protection keys differ; fresh targets retained for inspection.")
     receipt = {"verifiedUtc": utc(), "database": args.database, "keysVolume": args.keys_volume,
                "tables": restored, "keys": manifest["keys"], "helperImage": helper_image_id,
+               "databaseRole": args.database_user, "ownerRole": args.owner_role, "runtimeRole": args.runtime_role,
                "manifestSha256": sha256(source / "manifest.json")}
     with private_file(source / f"restore-{args.database}.json") as stream:
         stream.write((json.dumps(receipt, indent=2) + "\n").encode())
@@ -222,6 +240,7 @@ def restore(args, database_container):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--project", default="chesslens")
+    parser.add_argument("--database-user", default="chesslens", help="Administrative local PostgreSQL role; production uses chesslens_admin.")
     commands = parser.add_subparsers(dest="command", required=True)
     backup = commands.add_parser("create")
     backup.add_argument("--output", required=True, type=Path)
@@ -229,9 +248,18 @@ def main():
     recovery.add_argument("--source", required=True, type=Path)
     recovery.add_argument("--database", required=True)
     recovery.add_argument("--keys-volume", required=True)
+    recovery.add_argument("--owner-role", help="Existing migration role to own the new database and restored objects.")
+    recovery.add_argument("--runtime-role", help="Existing runtime role to receive DML privileges in the new database; requires --owner-role.")
     args = parser.parse_args()
     if not re.fullmatch(r"chesslens(?:-[a-z0-9-]+)?", args.project):
         parser.error("Select the exact chesslens Compose project.")
+    for role in (args.database_user, getattr(args, "owner_role", None), getattr(args, "runtime_role", None)):
+        if role and not re.fullmatch(r"[a-z_][a-z0-9_]{0,62}", role):
+            parser.error("Select simple explicit PostgreSQL role names.")
+    if getattr(args, "runtime_role", None) and not args.owner_role:
+        parser.error("--runtime-role requires --owner-role.")
+    if getattr(args, "runtime_role", None) and args.runtime_role == args.owner_role:
+        parser.error("Migration owner and runtime roles must be distinct.")
     engine = output("info", "--format", "{{.OSType}} {{.OperatingSystem}}")
     if not engine.startswith("linux ") or "Docker Desktop" in engine:
         raise ValueError("A native Linux Docker Engine in context default is required.")

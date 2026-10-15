@@ -1,0 +1,17 @@
+# Select only a new verified restore target; original database/keys stay intact.
+services:
+  migrate:
+    environment:
+      ConnectionStrings__Database: Host=database;Database=${CHESSLENS_RESTORE_DATABASE:?Set the verified restored database};Username=chesslens_migrator;GSS Encryption Mode=Disable
+  api:
+    environment:
+      ConnectionStrings__Database: Host=database;Database=${CHESSLENS_RESTORE_DATABASE:?Set the verified restored database};Username=chesslens;GSS Encryption Mode=Disable
+    volumes:
+      - restored-keys:/app/keys
+  worker:
+    environment:
+      ConnectionStrings__Database: Host=database;Database=${CHESSLENS_RESTORE_DATABASE:?Set the verified restored database};Username=chesslens;GSS Encryption Mode=Disable
+volumes:
+  restored-keys:
+    external: true
+    name: ${CHESSLENS_RESTORE_KEYS_VOLUME:?Set the verified restored keys volume}

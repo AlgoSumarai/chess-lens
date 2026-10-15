@@ -9,5 +9,7 @@ RUN npm run build
 
 FROM nginx:1.30.4-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-upstream.conf /etc/nginx/chesslens-upstream.conf
+COPY nginx-proxy-headers.conf /etc/nginx/chesslens-proxy-headers.conf
 COPY --from=build /source/dist /usr/share/nginx/html
 EXPOSE 8080
