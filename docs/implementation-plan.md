@@ -36,7 +36,7 @@ The authoritative scope is [the full build brief](build-brief.md). All six miles
 
 ## Status
 
-All required vertical slices and release tooling are implemented, with dated native/ARM64, recovery, security, accessibility, licence/source, restore/cutover, benchmark and clean-checkout evidence in [verification](verification.md). Independent Round 1 against 9cbcc22 scored 8.355/10 but failed the required malformed-clock mixed-import and exhausted-recovery gates. Its exact report is retained in [quality review](quality-review.md). Focused corrections pass 59 parser/provider/account/import checks; full rebuilt integration and independent Round 2 remain required. One of at most three review rounds has completed. The dated sections below are historical delivery records, not the current completion state.
+All required vertical slices and release tooling are implemented, with dated native/ARM64, recovery, security, accessibility, licence/source, restore/cutover, benchmark and clean-checkout evidence in [verification](verification.md). Independent Round 1 against 9cbcc22 scored 8.355/10 but failed the required malformed-clock mixed-import and exhausted-recovery gates. Its exact report is retained in [quality review](quality-review.md). Corrections pass 59 focused and 227 full backend checks, 34 native desktop/mobile cases and six fresh target-ARM64 cases. Operational, licence/material, live-provider, copy-upgrade and repeat measurement evidence is current. Corrected artifact verification and independent Round 2 remain required. One of at most three review rounds has completed. The dated sections below are historical delivery records, not the current completion state.
 
 ## Goal execution — 13 October 2026
 
