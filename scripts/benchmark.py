@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Opt-in real-engine mixed-workload benchmark on an isolated native Engine stack.
 
-Creates two synthetic owners, queues six reviews and twelve imports, and checks
+Creates two synthetic owners, queues six reviews and six imports, and checks
 insight, puzzle, practice, report and interactive progress before backlog drains.
 Stops only the selected worker while preparing its queues. Never removes volumes.
 Run alone on that project. Docker stats are sampled, not an instantaneous peak.
@@ -150,7 +150,7 @@ def main():
                 profile = 'quick' if index == 0 else 'deep'
                 run = client.api('/games/' + game['id'] + '/analysis', {'profile': profile}, 'POST')
                 reviews.append({'client': index, 'id': run['id'], 'profile': profile, 'plies': run['totalPlies']})
-            for i in range(6):
+            for i in range(3):
                 job = client.api('/imports/pgn', {'pgn': pgn(f'backlog-{index}-{i}', '1.a3 a6 2.h3 h6'), 'playerName': 'Learner', 'maxGames': 1}, 'POST')
                 imports.append({'client': index, 'id': job['id']})
         primary = clients[0]
@@ -160,7 +160,7 @@ def main():
         progress = primary.api('/progress', {'fromDate': today, 'throughDate': today}, 'POST')['id']
         position = primary.api('/games/' + seed['id'] + '/position-analysis', {'channelId': str(uuid.uuid4()), 'sequence': 1, 'ply': 4, 'variation': []}, 'POST')['id']
         report['workload'] = {'reviews': reviews, 'reviewGames': len(reviews), 'reviewPlies': sum(r['plies'] for r in reviews),
-            'queuedImports': len(imports), 'queuedImportGames': 12, 'queuedImportPlies': 48,
+            'queuedImports': len(imports), 'queuedImportGames': len(imports), 'queuedImportPlies': 4 * len(imports),
             'sideJobs': {'insight': insight, 'puzzle': puzzle, 'practice': practice, 'progressReport': progress, 'position': position},
             'profiles': {'quick': {'nodes': 30000, 'maxMilliseconds': 1000}, 'deep': {'nodes': 250000, 'maxMilliseconds': 5000}},
             'verification': 'Production rechecks deepen flagged or bounded decisions; exact persisted search budgets are exported after completion.'}

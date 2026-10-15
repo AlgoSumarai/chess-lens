@@ -32,10 +32,15 @@ def main():
     parser.add_argument("--http-url", required=True)
     parser.add_argument("--ca", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--database", default="chesslens", help="Expected application database, including a verified restore target.")
+    parser.add_argument("--original-database", help="Optional preserved source database that must not contain the new engine run.")
+    parser.add_argument("--verify-engine", action="store_true", help="Also import/review an original six-ply fixture with real Stockfish.")
     args = parser.parse_args()
     secure, plain = (urllib.parse.urlparse(u) for u in (args.url, args.http_url))
     if not re.fullmatch(r"chesslens-[a-z0-9-]+-validation", args.project) or secure.scheme != "https" or plain.scheme != "http" or secure.hostname not in ("localhost", "127.0.0.1") or plain.hostname != secure.hostname or secure.username or plain.username:
         parser.error("Select loopback HTTPS/HTTP URLs and an isolated chesslens-*-validation project.")
+    if any(value is not None and not re.fullmatch(r"chesslens(?:_[a-z0-9_]+)?", value) for value in (args.database, args.original_database)) or args.database == args.original_database:
+        parser.error("Choose a valid isolated application database and a distinct original database.")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     api_container = args.project + "-api-1"
 
@@ -141,11 +146,54 @@ def main():
         record("cookies-csrf-origins-and-forwarding", secureHostOnlyCookies=True, httpOnly=True, sameSite="Strict",
                missingCsrfRejected=400, foreignOriginRejected=403, ownedNegotiation=200, edgeOverwritesClientForwarding=True)
 
-        rows = docker("exec", args.project + "-database-1", "psql", "-X", "-At", "-U", "chesslens_admin", "-d", "chesslens", "-v", "ON_ERROR_STOP=1", "-c",
+        rows = docker("exec", args.project + "-database-1", "psql", "-X", "-At", "-U", "chesslens_admin", "-d", args.database, "-v", "ON_ERROR_STOP=1", "-c",
                       'SELECT json_build_object(\'superuser\', rolsuper, \'createDatabase\', rolcreatedb, \'createRoles\', rolcreaterole, \'schemaCreate\', has_schema_privilege(rolname,\'public\',\'CREATE\')) FROM pg_roles WHERE rolname=\'chesslens\';').stdout.strip()
         role = json.loads(rows)
         assert role == {"superuser": False, "createDatabase": False, "createRoles": False, "schemaCreate": False}
-        record("runtime-database-role", **role, actualAccountWritesSucceeded=True)
+        owner = str(uuid.UUID(owner))
+        owner_exists = docker("exec", args.project + "-database-1", "psql", "-X", "-At", "-U", "chesslens", "-d", args.database, "-v", "ON_ERROR_STOP=1", "-c",
+                              f'''SELECT count(*) FROM "AspNetUsers" WHERE "Id"='{owner}';''').stdout.strip()
+        assert owner_exists == "1"
+        record("runtime-database-role", **role, actualAccountWritesSucceeded=True, verifiedDatabase=args.database)
+        if args.verify_engine:
+            token = api("/account/csrf")[0]["token"]
+            pgn = f'''[Event "Original HTTPS release fixture {uuid.uuid4()}"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+1.f3 e5 2.g4 Nc6 3.a3 Qh4# 0-1'''
+            imported = api("/imports/pgn", {"pgn": pgn, "playerName": "Learner", "maxGames": 1}, "POST")[0]["id"]
+
+            def completed(path):
+                deadline = time.monotonic() + 180
+                while time.monotonic() < deadline:
+                    row = api(path)[0]
+                    if row["state"] not in ("queued", "running", "waiting"):
+                        assert row["state"] == "completed"
+                        return row
+                    time.sleep(1)
+                raise TimeoutError("The real release engine fixture did not complete.")
+
+            assert completed("/jobs/" + imported)["imported"] == 1
+            game = api("/games")[0]["items"][0]["id"]
+            started = time.monotonic()
+            run = api("/games/" + game + "/analysis", {"profile": "deep"}, "POST")[0]["id"]
+            run = str(uuid.UUID(run))
+            assert api("/games/" + game + "/analysis", {"profile": "deep"}, "POST")[0]["id"] == run
+            result = completed("/analysis/" + run)
+            assert result["completedPlies"] == result["totalPlies"] == 6
+            count_query = f'''SELECT count(*),count(DISTINCT "Ply") FROM "MoveAnalyses" WHERE "RunId"='{run}'::uuid;'''
+            saved = docker("exec", args.project + "-database-1", "psql", "-X", "-At", "-U", "chesslens", "-d", args.database, "-c", count_query).stdout.strip()
+            assert saved == "6|6"
+            original_unchanged = None
+            if args.original_database:
+                original_unchanged = docker("exec", args.project + "-database-1", "psql", "-X", "-At", "-U", "chesslens_admin", "-d", args.original_database,
+                                            "-c", f'''SELECT count(*) FROM "AnalysisRuns" WHERE "Id"='{run}'::uuid;''').stdout.strip() == "0"
+                assert original_unchanged
+            record("real-release-engine-job", runId=run, database=args.database, persistedPlies=6, duplicatePlies=0,
+                   activeDuplicateReused=True, originalDatabaseHasNoNewRun=original_unchanged,
+                   observedElapsedSeconds=round(time.monotonic() - started, 3),
+                   imageIds={service: docker("inspect", "--format", "{{.Image}}", args.project + "-" + service + "-1").stdout.strip() for service in ("api", "worker", "frontend")})
         docker("restart", "--time", "2", api_container)
         wait_ready()
         assert api("/account/me")[0]["id"] == owner
