@@ -23,7 +23,7 @@ integration-test databases; production runtime-role restrictions have separate
 HTTPS tests and evidence.
 
 For a local run, use a separate clean checkout, Docker Engine and the documented
-.NET/Node/Python prerequisites:
+.NET/Node prerequisites and Python 3.12 or newer:
 
 ```sh
 CHESSLENS_PROJECT=chesslens-ci-validation APP_PORT=8092 DATABASE_PORT=54349 \

@@ -1,0 +1,109 @@
+[Event "ChessLens original comparable fixture 1"]
+[Site "Local artificial demo"]
+[Date "2026.10.14"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Nc6 3.a3 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 2"]
+[Site "Local artificial demo"]
+[Date "2026.10.14"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Nc6 3.a3 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 3"]
+[Site "Local artificial demo"]
+[Date "2026.10.14"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Nc6 3.a3 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 4"]
+[Site "Local artificial demo"]
+[Date "2026.10.14"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Nc6 3.a3 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 5"]
+[Site "Local artificial demo"]
+[Date "2026.10.14"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Nc6 3.a3 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 6"]
+[Site "Local artificial demo"]
+[Date "2026.10.15"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 7"]
+[Site "Local artificial demo"]
+[Date "2026.10.15"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 8"]
+[Site "Local artificial demo"]
+[Date "2026.10.15"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 9"]
+[Site "Local artificial demo"]
+[Date "2026.10.15"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Qh4# 0-1
+
+[Event "ChessLens original comparable fixture 10"]
+[Site "Local artificial demo"]
+[Date "2026.10.15"]
+[White "Opponent"]
+[Black "Learner"]
+[Result "0-1"]
+[TimeControl "300+0"]
+[Termination "checkmate"]
+
+1.f3 e5 2.g4 Qh4# 0-1

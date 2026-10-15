@@ -28,7 +28,7 @@ def inspect(reference, platform):
     return {key: raw[key] for key in ('Id', 'Os', 'Architecture', 'Size', 'RepoDigests')}
 
 
-def verify(directory):
+def verify(directory, selected_platform=None):
     receipt = dict(line.split('  ', 1)[::-1] for line in (directory / 'SHA256SUMS').read_text().splitlines())
     if receipt.get('release.json') != sha(directory / 'release.json'):
         raise ValueError('Release manifest checksum mismatch.')
@@ -37,11 +37,15 @@ def verify(directory):
         path = directory / relative
         if path.resolve().is_relative_to(directory.resolve()) is False or sha(path) != expected:
             raise ValueError('Release file checksum mismatch: ' + relative)
+    checked = 0
     for platform, images in manifest['images'].items():
+        if selected_platform is not None and platform != selected_platform:
+            continue
         for item in images.values():
             if inspect(item['reference'], platform)['Id'] != item['Id']:
                 raise ValueError('Load the correct archive; local image differs: ' + item['reference'])
-    print('Verified release file hashes and all eight local runtime image IDs.')
+            checked += 1
+    print(f'Verified release file hashes and {checked} local runtime image IDs.')
 
 
 def package(args):
@@ -50,7 +54,7 @@ def package(args):
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     application_commit = subprocess.check_output(['git', 'rev-parse', args.application_commit], text=True).strip()
     changed = subprocess.check_output(['git', 'diff', '--name-only', application_commit, commit, '--',
-              'src', 'web', 'Dockerfile', 'Directory.Build.props', 'global.json', 'compose.yaml', 'compose.app.yaml', 'compose.production.yaml', 'deploy', 'licenses'], text=True)
+              'src', 'web', 'Dockerfile', '.dockerignore', 'Directory.Build.props', 'global.json', 'samples/first-review.pgn', 'compose.yaml', 'compose.app.yaml', 'compose.production.yaml', 'deploy', 'licenses'], text=True)
     if changed.strip():
         raise ValueError('Application inputs changed since the selected image source commit; rebuild first.')
     if not re.fullmatch(r'[a-z0-9][a-z0-9.-]{0,63}', args.version):
@@ -115,13 +119,14 @@ def main():
     create.add_argument('--output', type=Path, required=True)
     check = commands.add_parser('verify')
     check.add_argument('directory', type=Path)
+    check.add_argument('--platform', choices=('linux/amd64', 'linux/arm64'))
     args = parser.parse_args()
     if 'Docker Desktop' in docker('info', '--format', '{{.OperatingSystem}}'):
         parser.error('Use native Linux Docker Engine.')
     if args.command == 'package':
         package(args)
     else:
-        verify(args.directory)
+        verify(args.directory, args.platform)
 
 
 if __name__ == '__main__':

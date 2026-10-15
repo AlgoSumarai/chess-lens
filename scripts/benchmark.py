@@ -219,6 +219,25 @@ def main():
         stopped.set()
         if sampling:
             sampling.join(timeout=65)
+        def memory(value):
+            match = re.fullmatch(r'([0-9.]+)\s*([A-Za-z]+)', value.split('/')[0].strip())
+            units = {'B': 1, 'kB': 1000, 'KiB': 1024, 'MB': 1000**2, 'MiB': 1024**2, 'GB': 1000**3, 'GiB': 1024**3}
+            return round(float(match[1]) * units[match[2]])
+        resources = {}
+        aggregate = []
+        for sample in report['samples']:
+            cpu_total = 0; memory_total = 0
+            for row in sample['services']:
+                cpu = float(row['CPUPerc'].rstrip('%')); used = memory(row['MemUsage'])
+                peak = resources.setdefault(row['Name'], {'peakCpuPercentOneCore100': 0, 'peakMemoryBytes': 0})
+                peak['peakCpuPercentOneCore100'] = max(peak['peakCpuPercentOneCore100'], cpu)
+                peak['peakMemoryBytes'] = max(peak['peakMemoryBytes'], used)
+                cpu_total += cpu; memory_total += used
+            aggregate.append((cpu_total, memory_total))
+        report['sampledPeaks'] = {'services': resources, 'totalCpuPercentOneCore100': max((v[0] for v in aggregate), default=0),
+                                  'totalMemoryBytes': max((v[1] for v in aggregate), default=0),
+                                  'engineProcesses': max((s['engineProcesses'] for s in report['samples']), default=0),
+                                  'memoryDefinition': 'Docker Linux working usage, excluding reclaimable cache; per-search process peaks are recorded separately.'}
         docker('start', worker)
         for client in clients:
             try:
