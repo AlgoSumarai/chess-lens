@@ -64,3 +64,7 @@ progress{width:100%;accent-color:var(--accent)}
 .section-title{flex-wrap:wrap}
 .section-title>*{min-width:0}
 .section-title .pill{max-width:100%;overflow-wrap:anywhere}
+.page-heading>div,.dashboard-grid>*{min-width:0;max-width:100%}
+.page-heading h1{overflow-wrap:anywhere}
+@media(max-width:560px){.dashboard-grid{grid-template-columns:minmax(0,1fr)}.library-stat{display:block}.library-stat .big-number{margin-bottom:.5rem}}
+footer a{text-decoration:underline;text-underline-offset:.2em}

@@ -20,5 +20,20 @@ curl --fail --location --proto '=https' --tlsv1.2 --retry 2 --connect-timeout 15
 printf '%s  %s\n' "$chesslens_engine_sha" "$chesslens_engine_archive" | sha256sum --check --status
 tar --no-same-owner -xzf "$chesslens_engine_archive" -C "$chesslens_engine_directory"
 ln -s "stockfish-linux-$chesslens_engine_arch-universal" "$chesslens_engine_directory/stockfish/stockfish"
+chesslens_source_archive="$chesslens_engine_directory/stockfish-sf19-source.tar.gz"
+curl --fail --location --proto '=https' --tlsv1.2 --retry 2 --connect-timeout 15 --max-time 180 \
+  https://codeload.github.com/official-stockfish/Stockfish/tar.gz/edb0d9db6731067ec50ce619ff372b463bc4dd5d \
+  --output "$chesslens_source_archive"
+printf '%s  %s\n' 4fc20699a5ecf7883b036ce180020f5e57979623ad719fd2a52839209521581b "$chesslens_source_archive" | sha256sum --check --status
+chesslens_materials_directory="$chesslens_engine_directory/stockfish/corresponding-source"
+mkdir -- "$chesslens_materials_directory"
+tar --no-same-owner -xzf "$chesslens_source_archive" --strip-components=1 -C "$chesslens_materials_directory"
+chesslens_network="$chesslens_materials_directory/src/nn-1a298aa575a0.nnue"
+curl --fail --location --proto '=https' --tlsv1.2 --retry 2 --connect-timeout 15 --max-time 180 \
+  https://data.stockfishchess.org/nn/nn-1a298aa575a0.nnue --output "$chesslens_network"
+printf '%s  %s\n' 1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2 "$chesslens_network" | sha256sum --check --status
+cp -R -- licenses/stockfish "$chesslens_materials_directory/chesslens-notices"
 printf '%s  %s\n' "$chesslens_engine_sha" "$(basename -- "$chesslens_engine_archive")" > "$chesslens_engine_directory/SHA256SUMS"
-printf 'Stockfish 19 installed: %s/stockfish/stockfish\nOriginal archive, licence, authors, source and build documentation are retained.\n' "$chesslens_engine_directory"
+printf '%s  %s\n' 4fc20699a5ecf7883b036ce180020f5e57979623ad719fd2a52839209521581b stockfish-sf19-source.tar.gz >> "$chesslens_engine_directory/SHA256SUMS"
+printf '%s  %s\n' 1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2 stockfish/corresponding-source/src/nn-1a298aa575a0.nnue >> "$chesslens_engine_directory/SHA256SUMS"
+printf 'Stockfish 19 installed: %s/stockfish/stockfish\nOriginal archive, licences, authors, complete source/network and build documentation are retained.\n' "$chesslens_engine_directory"

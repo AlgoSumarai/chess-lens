@@ -1,0 +1,10 @@
+{
+  "ref": "refs/tags/sf_19",
+  "node_id": "MDM6UmVmMjA5NzYxMzg6cmVmcy90YWdzL3NmXzE5",
+  "url": "https://api.github.com/repos/official-stockfish/Stockfish/git/refs/tags/sf_19",
+  "object": {
+    "sha": "edb0d9db6731067ec50ce619ff372b463bc4dd5d",
+    "type": "commit",
+    "url": "https://api.github.com/repos/official-stockfish/Stockfish/git/commits/edb0d9db6731067ec50ce619ff372b463bc4dd5d"
+  }
+}

@@ -12,6 +12,12 @@ test('small screens, long names, keyboard and touch promotion preserve legal pla
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.locator('#main')).toBeFocused();
   await expect(page.getByRole('heading', { name: 'A little reflection. A better next game.' })).toBeVisible();
+  const enlargedText = await page.addStyleTag({ content: ':root { font-size: 32px; }' });
+  await auditAccessibility(page, info, 'overview-200-percent-text');
+  await expect(page.getByRole('link', { name: 'Licences & artwork', exact: true })).toHaveAttribute('href', '/licenses/third-party-notices.txt');
+  expect((await (await page.request.get('/licenses/board-provenance.json')).json()).pieces).toHaveLength(12);
+  await page.screenshot({ path: `test-results/overview-200-percent-${info.project.name}.png`, fullPage: true });
+  await enlargedText.evaluate(element => element.remove());
   const headers = { 'X-CSRF-TOKEN': (await (await page.request.get('/api/account/csrf')).json()).token };
   const player = 'LearnerWithAnIntentionallyLongUnbrokenNameForSmallScreens';
   const imported = await page.request.post('/api/imports/pgn', { headers, data: { pgn: `[Event "Original promotion access fixture ${Date.now()}"]\n[White "${player}"]\n[Black "OpponentWithAnIntentionallyLongUnbrokenNameForSmallScreens"]\n[Result "1/2-1/2"]\n[FEN "7k/P7/6K1/8/8/8/8/8 w - - 0 1"]\n1.a8=N 1/2-1/2`, playerName: player, maxGames: 1 } });

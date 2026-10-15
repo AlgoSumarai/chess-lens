@@ -1,15 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { auditAccessibility } from './accessibility';
+import { browserTimeout } from './environment';
 
 test('the real import → review → weakness → puzzle → mistake practice → saved progress journey stays connected', async ({ page }, info) => {
-  test.setTimeout(300000);
+  test.setTimeout(browserTimeout(300000));
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/'); await page.getByRole('button', { name: 'New here? Create an account' }).click();
   await auditAccessibility(page, info, 'registration');
   await page.getByLabel('Email', { exact: true }).fill(`report-journey-${info.project.name}-${Date.now()}@test.example`);
   await page.getByLabel('Password', { exact: true }).fill('ChessLens.E2e2026!');
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'A little reflection. A better next game.' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole('heading', { name: 'A little reflection. A better next game.' })).toBeVisible({ timeout: browserTimeout(15000) });
   await auditAccessibility(page, info, 'overview-empty');
   await page.getByRole('link', { name: 'Import your first games', exact: true }).click();
   await auditAccessibility(page, info, 'import');
@@ -17,19 +18,19 @@ test('the real import → review → weakness → puzzle → mistake practice �
   const today = new Date().toISOString().slice(0, 10);
   await page.getByLabel('Or paste PGN').fill(`[Event "Original connected learning fixture ${Date.now()}"]\n[Date "${today.replaceAll('-', '.')}"]\n[White "Opponent"]\n[Black "Learner"]\n[Result "0-1"]\n[TimeControl "300+0"]\n1.f3 e5 2.g4 Nc6 3.a3 Qh4# 0-1`);
   await page.getByLabel('Your player name').fill('Learner'); await page.getByRole('button', { name: 'Import games', exact: true }).click();
-  await expect(page.getByText('1 imported · 0 already in library · 0 could not be imported')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText('1 imported · 0 already in library · 0 could not be imported')).toBeVisible({ timeout: browserTimeout(30000) });
   await auditAccessibility(page, info, 'import-complete');
   await page.getByRole('link', { name: 'Open library →' }).click();
   await expect(page.locator('.game-row')).toBeVisible();
   await auditAccessibility(page, info, 'library');
   await page.locator('.game-row').click();
   await page.getByRole('button', { name: 'Deep review', exact: true }).click();
-  await expect(page.getByText('completed · deep review · 6/6 half-moves')).toBeVisible({ timeout: 120000 });
+  await expect(page.getByText('completed · deep review · 6/6 half-moves')).toBeVisible({ timeout: browserTimeout(120000) });
   await auditAccessibility(page, info, 'review');
   await page.getByRole('link', { name: 'Weaknesses', exact: true }).click();
   await page.getByLabel('From (UTC)', { exact: true }).fill(today); await page.getByRole('button', { name: 'Find my patterns', exact: true }).click();
   const finding = page.locator('.weakness-list .panel').filter({ has: page.getByRole('heading', { name: 'Tactical opportunities', exact: true }) });
-  await expect(finding).toBeVisible({ timeout: 30000 }); await expect(finding).toContainText('Early signal');
+  await expect(finding).toBeVisible({ timeout: browserTimeout(30000) }); await expect(finding).toContainText('Early signal');
   await finding.getByText(/Inspect .* supporting positions/).click();
   await auditAccessibility(page, info, 'weakness-evidence');
   await finding.getByRole('link', { name: /Review move 2 · black/ }).click();
@@ -38,7 +39,7 @@ test('the real import → review → weakness → puzzle → mistake practice �
   await auditAccessibility(page, info, 'saved-decision');
   const savedDecision = page.url();
   await page.getByRole('button', { name: 'Turn this decision into a puzzle', exact: true }).click();
-  await expect(page.getByRole('status', { name: 'Puzzle validation status' })).toHaveText('Validated and ready to solve.', { timeout: 120000 });
+  await expect(page.getByRole('status', { name: 'Puzzle validation status' })).toHaveText('Validated and ready to solve.', { timeout: browserTimeout(120000) });
   await auditAccessibility(page, info, 'puzzle-ready');
   await page.getByRole('button', { name: 'Start or resume puzzle', exact: true }).click();
   await expect(page.getByRole('status', { name: 'Puzzle attempt status' })).toContainText('Your move.');
@@ -50,10 +51,10 @@ test('the real import → review → weakness → puzzle → mistake practice �
   await expect(page).toHaveURL(savedDecision);
   await page.getByRole('button', { name: 'Play from before this mistake', exact: true }).click();
   const practiceStatus = page.getByRole('status', { name: 'Mistake practice status' });
-  await expect(practiceStatus).toContainText('Your move.', { timeout: 30000 });
+  await expect(practiceStatus).toContainText('Your move.', { timeout: browserTimeout(30000) });
   await auditAccessibility(page, info, 'practice-active');
   await page.getByLabel('Coordinate move', { exact: true }).fill('d8h4'); await page.getByRole('button', { name: 'Play move', exact: true }).click();
-  await expect(practiceStatus).toContainText('Objective met · unassisted attempt.', { timeout: 30000 });
+  await expect(practiceStatus).toContainText('Objective met · unassisted attempt.', { timeout: browserTimeout(30000) });
   await auditAccessibility(page, info, 'practice-complete');
   await page.getByRole('link', { name: 'Progress', exact: true }).click();
   await auditAccessibility(page, info, 'progress-filters');
@@ -61,7 +62,7 @@ test('the real import → review → weakness → puzzle → mistake practice �
   await page.getByLabel('Source').selectOption('pgn'); await page.getByLabel('Playing as').selectOption('black');
   await page.getByLabel('Time-control group').selectOption('blitz'); await page.getByLabel('Exact time control', { exact: true }).fill('300+0');
   await page.getByLabel('Only unknown openings').check(); await page.getByRole('button', { name: 'View saved progress', exact: true }).click();
-  await expect(page.getByRole('status', { name: 'Report status' })).toHaveText('Saved report ready.', { timeout: 30000 });
+  await expect(page.getByRole('status', { name: 'Report status' })).toHaveText('Saved report ready.', { timeout: browserTimeout(30000) });
   await expect(page.getByLabel('Verified error rate', { exact: true })).toContainText('/3');
   await expect(page.getByRole('heading', { name: 'Insufficient comparable data', exact: true })).toBeVisible();
   await expect(page.getByText('2 attempts finished during this interval.', { exact: false })).toBeVisible();
@@ -82,7 +83,7 @@ test('the real import → review → weakness → puzzle → mistake practice �
   await page.getByLabel('Only unknown openings').check(); await page.getByRole('button', { name: 'View saved progress', exact: true }).click();
   await expect(page).toHaveURL(reportUrl); // Identical evidence/filters reuse the saved revision.
   await page.getByRole('link', { name: 'Weekly reports', exact: true }).click(); await page.getByRole('button', { name: 'Generate saved report', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('No new completed review activity', { timeout: 10000 });
+  await expect(page.getByRole('status')).toContainText('No new completed review activity', { timeout: browserTimeout(10000) });
   await expect(page.getByRole('link', { name: 'View your progress', exact: true })).toBeVisible();
   await auditAccessibility(page, info, 'weekly-empty');
   await page.getByRole('link', { name: 'Settings', exact: true }).click();

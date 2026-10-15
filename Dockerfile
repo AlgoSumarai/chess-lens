@@ -1,4 +1,6 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0.402 AS build
+# Publish portable managed DLLs (UseAppHost=false) using the native build SDK.
+# Runtime images and the separate Stockfish process use the target architecture.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402 AS build
 WORKDIR /source
 COPY global.json Directory.Build.props ChessLens.slnx ./
 COPY src/ChessLens.Core/ChessLens.Core.csproj src/ChessLens.Core/packages.lock.json src/ChessLens.Core/
@@ -14,6 +16,12 @@ COPY samples/ samples/
 RUN dotnet publish src/ChessLens.Api -c Release --no-restore -o /app/api /p:UseAppHost=false
 RUN dotnet publish src/ChessLens.Worker -c Release --no-restore -o /app/worker /p:UseAppHost=false
 
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402 AS engine-materials
+ADD --checksum=sha256:4fc20699a5ecf7883b036ce180020f5e57979623ad719fd2a52839209521581b https://codeload.github.com/official-stockfish/Stockfish/tar.gz/edb0d9db6731067ec50ce619ff372b463bc4dd5d /tmp/source.tar.gz
+RUN mkdir /materials && tar -xzf /tmp/source.tar.gz --strip-components=1 -C /materials
+ADD --chmod=0644 --checksum=sha256:1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2 https://data.stockfishchess.org/nn/nn-1a298aa575a0.nnue /materials/src/nn-1a298aa575a0.nnue
+COPY licenses/stockfish /materials/chesslens-notices
+
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402 AS engine-amd64
 ADD --checksum=sha256:9defc0d4e55d49c65a6d042f3e571a39fcea499ade6dbe741b53b8c65e03611f https://github.com/official-stockfish/Stockfish/releases/download/sf_19/stockfish-linux-x86-64-universal.tar.gz /tmp/stockfish.tar.gz
 RUN mkdir /engine && tar -xzf /tmp/stockfish.tar.gz -C /engine \
@@ -25,10 +33,12 @@ RUN mkdir /engine && tar -xzf /tmp/stockfish.tar.gz -C /engine \
     && ln -s stockfish-linux-arm64-universal /engine/stockfish/stockfish
 
 FROM engine-${TARGETARCH} AS engine
+COPY --from=engine-materials /materials /engine/stockfish/corresponding-source
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.13 AS api
 WORKDIR /app
 COPY --from=build /app/api .
+COPY licenses /app/licenses
 RUN mkdir -p /app/keys && chown -R app:app /app/keys
 ENV ASPNETCORE_HTTP_PORTS=8080 DataProtectionPath=/app/keys
 USER app
@@ -37,6 +47,7 @@ ENTRYPOINT ["dotnet", "ChessLens.Api.dll"]
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.13 AS worker
 WORKDIR /app
 COPY --from=build /app/worker .
+COPY licenses /app/licenses
 COPY --from=engine /engine/stockfish /opt/stockfish
 ENV Stockfish__Path=/opt/stockfish/stockfish
 USER app

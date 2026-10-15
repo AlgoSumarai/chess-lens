@@ -1,4 +1,5 @@
-FROM node:24.15.0-bookworm-slim AS build
+# The browser bundle is portable; run build tools on the host architecture.
+FROM --platform=$BUILDPLATFORM node:24.15.0-bookworm-slim AS build
 WORKDIR /source
 COPY package.json package-lock.json ./
 RUN --mount=type=secret,id=build_ca \

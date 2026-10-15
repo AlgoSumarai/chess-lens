@@ -27,3 +27,14 @@ Native browser zoom reached **200%** (observed `devicePixelRatio=2`, 720 CSS pix
 Orca's AT-SPI events and generated speech output were inspected for entry labels/required state, headings, named pieces and squares, coordinate controls, links, preferences saved, the active practice turn, engine-check progress and the completed objective. An actual practice retry preserved its original source and completed a new attempt with `d8h4`; the saved attempt was checked independently. Earlier failed audit/control attempts remain in the verification evidence and are not counted as passing checks.
 
 This is an engineering inspection of the actual interface and screen-reader output, not a user study or an audio-listening session. No braille display, physical mobile device, NVDA/Windows or VoiceOver/macOS inspection is claimed. Orca was allowed time to process focus-mode changes before native typing. The independent quality review must still inspect representative desktop/mobile interactions. Dated commands, counts, screenshots and limitations are recorded in [verification](verification.md).
+
+## Enlarged overview follow-up — 15 October 2026
+
+The 320-pixel, 200%-text overview now wraps its heading and stacks the library
+card instead of overflowing its grid. This is part of the desktop/mobile
+controls regression, alongside promotions, saved notation and the existing
+real-engine practice check. The footer's licence link is permanently underlined
+and opens the bundled notices. Four focused cases/18 full axe scans pass after
+fixing the initially observed width and link-identification defects. This
+follow-up does not replace the earlier real Orca/browser-zoom inspection or
+claim new assistive technologies/physical devices were tested.

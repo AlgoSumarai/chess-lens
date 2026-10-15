@@ -1,0 +1,117 @@
+{
+  "reviewedUtc": "2026-10-15",
+  "package": "react-chessboard",
+  "version": "5.12.1",
+  "scope": "Default Cburnett-derived piece components. Paths/groups/dimensions/style have been adapted; package MIT and artwork BSD attribution are distinct.",
+  "licenseSource": "https://commons.wikimedia.org/wiki/Template:BSD",
+  "pieces": [
+    {
+      "piece": "bB",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_bdt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/9/98/20101006020321%21Chess_bdt45.svg",
+      "originalSha1": "5d3598addb9da11011f5e3c85361a6b10805ee16",
+      "distributedSvgSha256": "a8a27ddaf67d634845eb803893156c42313b5c3ec07417d09bfa42c19e4e7ede"
+    },
+    {
+      "piece": "bK",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_kdt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/f/f0/20101006015832%21Chess_kdt45.svg",
+      "originalSha1": "bcb92de2513541f6fb1b51605b59d91799d9ca7b",
+      "distributedSvgSha256": "8408136fbbd06813376f9bbd54bdfd553baf63936733670b85b5f1d6a9258d75"
+    },
+    {
+      "piece": "bN",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_ndt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/e/ef/20101006020140%21Chess_ndt45.svg",
+      "originalSha1": "d4c45f4450229c38a56578e84563475a73f6b1ef",
+      "distributedSvgSha256": "fc1750e9cb0333cc68ce6b17e9f85422611c7ca5fc20d14af3979cdb5f961d23"
+    },
+    {
+      "piece": "bP",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_pdt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/c/c7/20101006020440%21Chess_pdt45.svg",
+      "originalSha1": "6d097283a843b065980f802c8ed64efce27edc8e",
+      "distributedSvgSha256": "54cb07371153c16a3e838f100a7c3e65150bd3d1a11bfd32998bbf938ba82cf7"
+    },
+    {
+      "piece": "bQ",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_qdt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/4/47/20101006020010%21Chess_qdt45.svg",
+      "originalSha1": "a1082cde5c86104d8d5f0e4398439b8da9ec086c",
+      "distributedSvgSha256": "ebfd7c819a22c4289d8cb898130c003f07bcaf9294f8775ec4ce83d96e826467"
+    },
+    {
+      "piece": "bR",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_rdt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/f/ff/20101006020629%21Chess_rdt45.svg",
+      "originalSha1": "b66a2d4a3e36acda44ea1acc99f90ca19dac1d99",
+      "distributedSvgSha256": "ede3fa548ccd24197131ffaf70f7542e54d548650740507a10ff4aa55a19f289"
+    },
+    {
+      "piece": "wB",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_blt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/b/b1/20101006020239%21Chess_blt45.svg",
+      "originalSha1": "ce7ba142a35dd3ca6b46ffa54cf8f1026d2a22d8",
+      "distributedSvgSha256": "bc36124cb9fc84bb5570cafcc332fdccfb780c4f0015174c3521f6e7eeb2f131"
+    },
+    {
+      "piece": "wK",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_klt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/4/42/20101006015721%21Chess_klt45.svg",
+      "originalSha1": "3e10903ac5f0a37584c1b1a383abcabeac588276",
+      "distributedSvgSha256": "2bb56e9050ae2cbb658239dd98301d24a82daeaedfc13e3267b87ad239c8866a"
+    },
+    {
+      "piece": "wN",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_nlt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/7/70/20101006020054%21Chess_nlt45.svg",
+      "originalSha1": "a7660e97869c127ac2b8103e61a5332a44800c25",
+      "distributedSvgSha256": "1238f8a485287b6a3d9263d5de106094caecd2bf84abec108301a2d6513552bd"
+    },
+    {
+      "piece": "wP",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_plt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/4/45/20101006020358%21Chess_plt45.svg",
+      "originalSha1": "1325d83948cef24dba779e080648135e04d99745",
+      "distributedSvgSha256": "2a12750f7af41a492e7ce2f09d0d6497356bd06b8da727641993d77b53459242"
+    },
+    {
+      "piece": "wQ",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_qlt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/1/15/20101006015920%21Chess_qlt45.svg",
+      "originalSha1": "17a554bd078c697b0d4685a3740aa9e9e4092251",
+      "distributedSvgSha256": "5c4cf47b0c07df605247ea27ed67f54c7a39609b5963f71ec21634cc6b6de5a1"
+    },
+    {
+      "piece": "wR",
+      "author": "Cburnett",
+      "selectedLicense": "BSD-3-Clause",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chess_rlt45.svg",
+      "originalUrl": "https://upload.wikimedia.org/wikipedia/commons/archive/7/72/20101006020544%21Chess_rlt45.svg",
+      "originalSha1": "62121a4770d82a4093254a0efdf3304cfaebb087",
+      "distributedSvgSha256": "c9da8fb3e9e715d8c5c7169eec9ae67e35e498578dacf3d3cc0f96ab0660f3b4"
+    }
+  ]
+}

@@ -111,7 +111,7 @@ export function App() {
           <Panel><h1>Page not found</h1><a href="#/">Return to overview</a></Panel>
         }
       </main>
-      <footer>ChessLens · Completed games. Deliberate practice.</footer>
+      <footer>ChessLens · Completed games. Deliberate practice. <a href="/licenses/third-party-notices.txt" target="_blank" rel="noreferrer">Licences &amp; artwork</a></footer>
     </div>
   </div>;
 }

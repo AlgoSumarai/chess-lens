@@ -1,0 +1,78 @@
+{
+  "Geras1mleo-Chess-bc2c2b39debb.txt": {
+    "sha256": "37c0a2438b65096d4f6fcbfc664884c84242d1b73aa37eddcf94d4c624206750",
+    "source": "https://raw.githubusercontent.com/Geras1mleo/Chess/bc2c2b39debb2c647dbd39887ac5dd8ed4d9abf0/LICENSE.md"
+  },
+  "Humanizr-Humanizer-3ebc38de585f.txt": {
+    "sha256": "e24ec7f2eea5c5f4b3e2c08308109ba99b49b4b56ea7ff0e0a178f2bdd4bbce8",
+    "source": "https://raw.githubusercontent.com/Humanizr/Humanizer/3ebc38de585fc641a04b0e78ed69468453b0f8a1/LICENSE"
+  },
+  "JamesNK-Newtonsoft.Json-4e13299d4b0e.txt": {
+    "sha256": "d7f83bbea3264a8e23d7739e44d9db1a4994b357274df6f00876eb2e623827ad",
+    "source": "https://raw.githubusercontent.com/JamesNK/Newtonsoft.Json/4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a/LICENSE.md"
+  },
+  "ODbL-1.0.txt": {
+    "sha256": "607680718977f6f6c9607972afd98f208573f19251315ed1362a8589b51beaf5",
+    "source": "https://opendatacommons.org/licenses/odbl/odbl-10.txt"
+  },
+  "Unicode-Data.txt": {
+    "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+    "source": "https://www.unicode.org/license.txt"
+  },
+  "ardalis-SmartEnum-aeb2e99c731b.txt": {
+    "sha256": "8e0a1dd30992f00b9759f9367da0925664770bd32e00fa76b52e17529af8c12e",
+    "source": "https://raw.githubusercontent.com/ardalis/SmartEnum/aeb2e99c731b581667aa1b4957e16d55ac5467ba/LICENSE"
+  },
+  "dotnet-dotnet-4099f83977f4.txt": {
+    "sha256": "ae48df11a335dc1a615f4f938b69cba73bcf4485c4f97af49b38efb0f216353b",
+    "source": "https://raw.githubusercontent.com/dotnet/dotnet/4099f83977f4d29604a9aeb971fb0a7bc1d5f699/LICENSE.TXT"
+  },
+  "dotnet-msbuild-995a3dce4178.txt": {
+    "sha256": "9aebac42398b50e652a84a7b92d70e85cd1a9c8746558a743dc6cec11b8d7d3e",
+    "source": "https://raw.githubusercontent.com/dotnet/msbuild/995a3dce41788caebf2b8ca6602a7431f08bfd06/LICENSE"
+  },
+  "dotnet-roslyn-6c4a46a31302.txt": {
+    "sha256": "ae48df11a335dc1a615f4f938b69cba73bcf4485c4f97af49b38efb0f216353b",
+    "source": "https://raw.githubusercontent.com/dotnet/roslyn/6c4a46a31302167b425d5e0a31ea83c9a9aa1d09/License.txt"
+  },
+  "dotnet-roslyn-analyzers-f2384e618453.txt": {
+    "sha256": "ae48df11a335dc1a615f4f938b69cba73bcf4485c4f97af49b38efb0f216353b",
+    "source": "https://raw.githubusercontent.com/dotnet/roslyn-analyzers/f2384e61845314d0e8ad74cc0fe67d1bd4e9f102/License.txt"
+  },
+  "dotnet-runtime-4822e3c3aa77.txt": {
+    "sha256": "cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+    "source": "https://raw.githubusercontent.com/dotnet/runtime/4822e3c3aa77eb82b2fb33c9321f923cf11ddde6/LICENSE.TXT"
+  },
+  "dotnet-runtime-9d5a6a9aa463.txt": {
+    "sha256": "cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+    "source": "https://raw.githubusercontent.com/dotnet/runtime/9d5a6a9aa463d6d10b0b0ba6d5982cc82f363dc3/LICENSE.TXT"
+  },
+  "fetch-cookie-2.2.0-Unlicense.txt": {
+    "sha256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c",
+    "source": "https://raw.githubusercontent.com/valeriangalliat/fetch-cookie/v2.2.0/UNLICENSE"
+  },
+  "microsoft-vs-solutionpersistence-19c3ca7dc997.txt": {
+    "sha256": "b5cb7ff7859e7d282d98fc43ab081b0dda5dc659dc3385cf65740c759a7e6a6c",
+    "source": "https://raw.githubusercontent.com/microsoft/vs-solutionpersistence/19c3ca7dc997dba2b3a86f6c666e9f717f34c8fe/LICENSE"
+  },
+  "mono-t4-cb559e2032ef.txt": {
+    "sha256": "76856a9562052a4f251e13bcddfee323d6cfd161c0c52135714309121a029dbd",
+    "source": "https://raw.githubusercontent.com/mono/t4/cb559e2032efd50b926c12927430c82b44d29b1d/LICENSE"
+  },
+  "npgsql-efcore.pg-5e912bf07106.txt": {
+    "sha256": "bc2fdab8551ca4022196dbbd3dc582ca65211209196a3459b1bab60cb71a9979",
+    "source": "https://raw.githubusercontent.com/npgsql/efcore.pg/5e912bf071068a44e5abbdab497b313ba99d3ee1/LICENSE"
+  },
+  "npgsql-npgsql-d3768398c178.txt": {
+    "sha256": "2e1d9cc6ed4eb7fe6fa82091846c06b4f58571a2c3b54777db6baeca10dd2d74",
+    "source": "https://raw.githubusercontent.com/npgsql/npgsql/d3768398c17877b3a916c3c4d87e8e11698991fc/LICENSE"
+  },
+  "signalr-10.0.0-MIT.txt": {
+    "sha256": "cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+    "source": "https://raw.githubusercontent.com/dotnet/aspnetcore/v10.0.0/LICENSE.txt"
+  },
+  "tr46-0.0.3-MIT.txt": {
+    "sha256": "499d6d466d064e0460427967a344e2a32fcb86ea8c6cd1a285ec4f1fa03fba67",
+    "source": "https://raw.githubusercontent.com/jsdom/tr46/master/LICENSE.md"
+  }
+}

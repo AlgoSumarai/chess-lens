@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run bounded real-UCI checks in a locally built worker image, without a database."""
 import argparse
+import hashlib
 from datetime import datetime, timezone
 import json
 from pathlib import Path
@@ -16,6 +17,7 @@ def main():
     parser.add_argument("--image", required=True)
     parser.add_argument("--platform", choices=("linux/amd64", "linux/arm64"), required=True)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--verify-source", action="store_true", help="Also verify complete corresponding-source/network/notices inside the image.")
     args = parser.parse_args()
     prefix = ["docker", "--context", "default"]
     engine = subprocess.check_output([*prefix, "info", "--format", "{{.OSType}} {{.OperatingSystem}}"], text=True, timeout=10)
@@ -25,6 +27,38 @@ def main():
     if f"{image['Os']}/{image['Architecture']}" != args.platform:
         raise ValueError("Image architecture does not match the explicitly selected platform.")
     name = f"chesslens-engine-check-{uuid.uuid4().hex}"
+    source_receipt = None
+    if args.verify_source:
+        notices = Path(__file__).resolve().parents[1] / "licenses/stockfish"
+        record = next(r for r in json.loads((notices / "source-verification.json").read_text())
+                      if r["architecture"] == image["Architecture"])
+        expected = {}
+        expected["/opt/stockfish/" + record["binaryName"]] = record["binarySha256"]
+        expected["/opt/stockfish/stockfish"] = record["binarySha256"]
+        for item in record["matchedFiles"]:
+            for root in ("/opt/stockfish", "/opt/stockfish/corresponding-source"):
+                expected[root + "/" + item["path"]] = item["sha256"]
+        expected["/opt/stockfish/corresponding-source/src/nn-1a298aa575a0.nnue"] = "1a298aa575a085434d29027978dc36867fe9c5bcea9376654b7a8eba1e52dfc2"
+        for filename in ("AUTHORS", "Copying.txt", ".github/workflows/universal_compilation.yml", ".github/workflows/upload_binaries.yml"):
+            notice = {"Copying.txt": "GPL-3.0.txt"}.get(filename, filename.rsplit("/", 1)[-1])
+            expected["/opt/stockfish/corresponding-source/" + filename] = hashlib.sha256((notices / notice).read_bytes()).hexdigest()
+        for filename in ("BUILD.md", "ODbL-1.0.txt", "source-verification.json"):
+            expected["/opt/stockfish/corresponding-source/chesslens-notices/" + filename] = hashlib.sha256((notices / filename).read_bytes()).hexdigest()
+        source_name = name + "-materials"
+        try:
+            try:
+                output = subprocess.check_output([
+                    *prefix, "run", "--pull=never", "--rm", "--platform", args.platform, "--name", source_name,
+                    "--network", "none", "--read-only", "--cap-drop", "ALL", "--memory", "256m", "--cpus", "1",
+                    "--entrypoint", "sha256sum", args.image, *expected], text=True, timeout=90)
+            except subprocess.CalledProcessError:
+                raise RuntimeError("Image source/materials check failed; see the file-specific error above.") from None
+            actual = {line.split(maxsplit=1)[1].strip(): line.split(maxsplit=1)[0] for line in output.splitlines()}
+            if actual != expected:
+                raise ValueError("Image corresponding source/network/notices differ from the pinned materials.")
+            source_receipt = {"matchingFileHashes": len(expected), "sourceCommit": record["commit"], "networkPresent": True}
+        finally:
+            subprocess.run([*prefix, "rm", "-f", source_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
     process = subprocess.Popen([
         *prefix, "run", "--pull=never", "--rm", "-i", "--platform", args.platform,
         "--name", name,
@@ -96,6 +130,7 @@ def main():
                    "imageId": image["Id"], "platform": args.platform, "enginePath": "/opt/stockfish/stockfish",
                    "settings": {"threads": 1, "hashMiB": 16, "multiPv": 3, "nodes": 20000},
                    "checks": checks, "exitCode": process.returncode,
+                   "sourceMaterials": source_receipt,
                    "scope": "Real bounded UCI in the selected worker image; no application/DB or throughput claim.",
                    "transcript": transcript}
         args.output.write_text(json.dumps(receipt, indent=2) + "\n")

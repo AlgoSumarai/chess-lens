@@ -24,7 +24,7 @@ wsl -d Ubuntu -- bash -lc 'cd ~/repos/chess-lens && ./scripts/start.sh'
 
 If PowerShell's Docker CLI already connects to a Linux Engine context, `./scripts/start.ps1 -DockerContext default` performs the equivalent startup. [Microsoft's WSL commands](https://learn.microsoft.com/en-us/windows/wsl/basic-commands) and [Docker's group/session instructions](https://docs.docker.com/engine/install/linux-postinstall/) describe setup. New Docker group membership requires a fresh login or `newgrp docker`. Native Linux verification and Windows/WSL verification are tracked separately in the ledger; a documented command is not a claim that Windows has been tested.
 
-Current worker image targets Linux x86-64 and bundles the universal Stockfish 19 binary. ARM64 packaging remains a release task.
+The worker selects the checksum-pinned universal Stockfish 19 binary for Linux x86-64 or ARM64. Both architectures build and pass real UCI checks on the native Linux Engine; ARM64 execution here uses QEMU on x86 hardware. See [architecture commands and exact verification scope](docs/operations.md#architectures). Complete corresponding source, NNUE network, build recipes and licences are retained beside the executable.
 
 If your organisation or antivirus inspects TLS and Windows can reach registries but container builds reject their certificates, the optional build-only CA path exports the public root of a certificate chain Windows already validates. It never disables certificate verification or exports private keys:
 

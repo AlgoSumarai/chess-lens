@@ -13,6 +13,7 @@ services:
     environment:
       ConnectionStrings__Database: Host=database;Database=chesslens;Username=chesslens;Password=${POSTGRES_PASSWORD};GSS Encryption Mode=Disable
       ASPNETCORE_ENVIRONMENT: Development
+      AllowedOrigins: http://localhost:${APP_PORT:-8088},http://127.0.0.1:${APP_PORT:-8088}
     depends_on:
       migrate: { condition: service_completed_successfully }
     volumes:

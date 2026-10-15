@@ -18,10 +18,61 @@ Compose healthchecks run every ten seconds, with a five-second command timeout, 
 
 The frontend healthcheck also calls readiness through nginx, so a healthy API alone cannot hide a broken proxy. nginx uses Docker's internal resolver with a five-second cache and a shared dynamic upstream. This follows [nginx's `resolve` contract](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#server) and [Compose's changing-container-address behavior](https://docs.docker.com/compose/how-tos/networking/). `scripts/check-proxy-recreation.py` forces an API address change in an isolated validation project and checks recovery without restarting the frontend. Its temporary address-holder container is removed afterward; named volumes are preserved.
 
+The local API's exact SignalR origin allowlist follows `APP_PORT`, for both
+`localhost` and `127.0.0.1`. A custom port must not silently disable notifications.
+Origin checks remain exact; unrelated origins are rejected.
+
+## Architectures
+
+The Dockerfile automatically selects the pinned **Linux x86-64 or ARM64**
+Stockfish 19 universal archive using the image target architecture. Native ARM
+hosts need no overlay. Both engine archives retain the original sources and
+notices plus supplemental complete source, build workflows and the exact NNUE
+network. The stable worker executable is `/opt/stockfish/stockfish`.
+
+The SDK and Node build stages run on `BUILDPLATFORM`. The backend publishes
+portable managed DLLs with `UseAppHost=false`, following [Microsoft's portable
+publishing contract](https://learn.microsoft.com/en-us/dotnet/core/deploying/#portable-binaries);
+the frontend produces portable browser JavaScript/CSS. Final .NET/nginx images
+and Stockfish use the target architecture. This keeps cross-architecture builds
+from spending time emulating their compiler/bundler.
+
+For host development, `scripts/install-stockfish.sh` selects `uname -m`, installs
+into a new directory and refuses an existing destination. The Windows x86-64
+installer has the same source/network packaging and no-overwrite policy; its
+latest changes have not been executed on Windows in this Linux session.
+See [licence and exact build materials](../licenses/stockfish/BUILD.md).
+
+Cross-architecture compatibility checks can use `compose.arm64.yaml` **after**
+the operator has enabled the documented QEMU ARM64 handler on their native Linux
+Engine. The application startup script does not install privileged emulators.
+Use a separate project and new volumes/ports:
+
+```sh
+APP_PORT=8089 DATABASE_PORT=54340 docker --context default compose \
+  -p chesslens-arm64-validation -f compose.yaml -f compose.app.yaml \
+  -f compose.arm64.yaml build
+APP_PORT=8089 DATABASE_PORT=54340 docker --context default compose \
+  -p chesslens-arm64-validation -f compose.yaml -f compose.app.yaml \
+  -f compose.arm64.yaml up -d --no-build --wait --wait-timeout 900
+CHESSLENS_URL=http://localhost:8089 CHESSLENS_EMULATED_ARCH=arm64 \
+  CHESSLENS_TEST_DATABASE_CONTAINER=chesslens-arm64-validation-database-1 \
+  npm --prefix web run test:e2e -- reports.spec.ts
+```
+
+The emulation overlay gives API/worker/frontend health commands a 20-second
+timeout and a ten-minute startup grace. Ordinary native health limits stay
+unchanged. The explicit browser flag scales test waits sixfold; **production
+job/engine deadlines are unchanged**. Record this flag with results. QEMU
+execution establishes architecture compatibility, not native ARM throughput.
+The verification ledger preserves initial cold-start/registration failures and
+the exact scope of subsequent runs. Windows/WSL and native ARM hardware checks
+must not be inferred from these Linux/QEMU runs.
+
 ## Logs and recovery evidence
 
 API and worker console output is structured JSON. HTTP responses carry `X-Correlation-ID`; API log scopes and error responses carry the corresponding correlation identifier. Processing slices have `JobKind`, `JobId`, a new `ExecutionId`, elapsed milliseconds and sanitized exception type. Engine start/retirement logs include child PID and thread/hash settings. A finished processing slice means that invocation returned, not that the durable job succeeded; query its persisted state to distinguish completion, retry, cancellation or rejection.
 
 Logs deliberately omit raw PGNs, annotations, usernames, model requests/responses, exception messages from external sources and credentials. Stack traces are retained for unexpected outer/API errors without their exception message. EF sensitive-data logging remains disabled. Operational logs and backups remain private local artifacts.
 
-Session interruption and engine-child OS termination checks are recorded in [verification](verification.md). Native whole-worker termination/restart and database-server outage evidence is recorded in the verification ledger. [Backup/restore commands](backup-restore.md) now preserve both the database and Data Protection keys and verify all restored table/key contents. Exhausted leases, repeated delivery under faults, reconnect/missed notifications, mixed-workload measurements, production HTTPS and release image checks remain open until their dated evidence is recorded. A readiness implementation alone does not close those gates.
+Session interruption and engine-child OS termination checks are recorded in [verification](verification.md). Native whole-worker termination/restart, database-server outage and actual API-outage/missed-notification recovery now have dated evidence. [Backup/restore commands](backup-restore.md) preserve both the database and Data Protection keys and verify all restored table/key contents. Exhausted leases, repeated delivery under faults, mixed-workload measurements, production HTTPS and release image checks remain open until their dated evidence is recorded. A readiness implementation alone does not close those gates.

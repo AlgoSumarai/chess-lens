@@ -7,7 +7,16 @@ services:
     platform: linux/arm64
   api:
     platform: linux/arm64
+    healthcheck:
+      timeout: 20s
+      start_period: 600s
   worker:
     platform: linux/arm64
+    healthcheck:
+      timeout: 20s
+      start_period: 600s
   frontend:
     platform: linux/arm64
+    healthcheck:
+      timeout: 20s
+      start_period: 600s
