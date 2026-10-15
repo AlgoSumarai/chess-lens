@@ -1,0 +1,9 @@
+{
+  "commit": "3b3ae4a808cc2dda5e1ce789ccab2da8558cbf86",
+  "status": "passed",
+  "elapsedSeconds": 222.009,
+  "samples": 110,
+  "fiveDistinctSideLanes": true,
+  "bothBacklogsAtEverySideObservation": true,
+  "fixtureDataDeleted": true
+}

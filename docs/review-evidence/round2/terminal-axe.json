@@ -1,0 +1,35 @@
+{
+  "scans": 2,
+  "violations": 0,
+  "ariaIncomplete": 0,
+  "results": [
+    {
+      "state": "axe-exhausted-pgn-recovery",
+      "url": "http://localhost:8098/#/import",
+      "timestamp": "2026-10-15T10:07:09.526Z",
+      "axe": "4.13.0",
+      "violations": 0,
+      "passes": 39,
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "nodes": 8
+        }
+      ]
+    },
+    {
+      "state": "axe-exhausted-pgn-recovery",
+      "url": "http://localhost:8098/#/import",
+      "timestamp": "2026-10-15T10:07:14.312Z",
+      "axe": "4.13.0",
+      "violations": 0,
+      "passes": 40,
+      "incomplete": [
+        {
+          "id": "color-contrast",
+          "nodes": 6
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "counters": {
+    "total": "227",
+    "executed": "227",
+    "passed": "227",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  },
+  "round1RegressionResults": [
+    {
+      "name": "ChessLens.Tests.ProviderPipelineTests.Wrong_type_optional_lichess_clocks_survive_durable_checkpoint_and_do_not_block_later_games",
+      "outcome": "Passed",
+      "duration": "00:00:00.2203141"
+    },
+    {
+      "name": "ChessLens.Tests.AccountImportTests.Historical_failed_pgn_retry_message_is_read_as_an_actionable_stopped_state",
+      "outcome": "Passed",
+      "duration": "00:00:00.2052563"
+    },
+    {
+      "name": "ChessLens.Tests.AccountImportTests.Malformed_optional_clock_does_not_block_later_valid_or_invalid_games",
+      "outcome": "Passed",
+      "duration": "00:00:00.2555515"
+    },
+    {
+      "name": "ChessLens.Tests.PgnTests.Malformed_optional_clocks_leave_legal_games_and_original_annotations_available(clock: \"999999999999999999999:00:00\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0046837"
+    },
+    {
+      "name": "ChessLens.Tests.PgnTests.Malformed_optional_clocks_leave_legal_games_and_original_annotations_available(clock: \"\u0661:00:00\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0011800"
+    },
+    {
+      "name": "ChessLens.Tests.AccountImportTests.Unexpected_import_errors_only_promise_retry_while_attempts_remain(previousAttempts: 3, state: \"failed\", retry: False)",
+      "outcome": "Passed",
+      "duration": "00:00:00.1695142"
+    },
+    {
+      "name": "ChessLens.Tests.PgnTests.Malformed_optional_clocks_leave_legal_games_and_original_annotations_available(clock: \"-1:00:00\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0526383"
+    },
+    {
+      "name": "ChessLens.Tests.PgnTests.Valid_clock_conversion_does_not_overflow_integer_seconds",
+      "outcome": "Passed",
+      "duration": "00:00:00.0016296"
+    },
+    {
+      "name": "ChessLens.Tests.AccountImportTests.Unexpected_import_errors_only_promise_retry_while_attempts_remain(previousAttempts: 0, state: \"queued\", retry: True)",
+      "outcome": "Passed",
+      "duration": "00:00:00.1928151"
+    },
+    {
+      "name": "ChessLens.Tests.PgnTests.Malformed_optional_clocks_leave_legal_games_and_original_annotations_available(clock: \"bad-clock\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0042438"
+    },
+    {
+      "name": "ChessLens.Tests.ProviderContractTests.Optional_clock_json_types_do_not_discard_this_or_following_completed_records",
+      "outcome": "Passed",
+      "duration": "00:00:00.0991776"
+    },
+    {
+      "name": "ChessLens.Tests.PgnTests.Malformed_optional_clocks_leave_legal_games_and_original_annotations_available(clock: \"0:60:00\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0008282"
+    },
+    {
+      "name": "ChessLens.Tests.PgnTests.Malformed_optional_clocks_leave_legal_games_and_original_annotations_available(clock: \"0:00:60\")",
+      "outcome": "Passed",
+      "duration": "00:00:00.0024460"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "startedAt": "2026-10-15T10:06:37.252Z",
+  "finishedAt": "2026-10-15T10:09:27.242Z",
+  "commit": "3b12bd712cf52a76c7d86a77f36981a971610985",
+  "url": "http://localhost:8098",
+  "journeysPassed": 2,
+  "journeysFailed": 0,
+  "defaultAxeScans": 34,
+  "violations": 0,
+  "ariaProhibitedIncomplete": 0,
+  "overflow": 0,
+  "pageErrors": [],
+  "profiles": [
+    {
+      "name": "desktop",
+      "passed": true,
+      "duplicatesPreserved": true,
+      "clockFix": {
+        "malformedClock": null,
+        "followingClock": 300,
+        "sourceAnnotationRetained": true
+      },
+      "dataCleaned": true
+    },
+    {
+      "name": "mobile",
+      "passed": true,
+      "duplicatesPreserved": true,
+      "clockFix": {
+        "malformedClock": null,
+        "followingClock": 300,
+        "sourceAnnotationRetained": true
+      },
+      "dataCleaned": true
+    }
+  ]
+}

@@ -5,6 +5,11 @@ to a registry, provisions infrastructure or deploys publicly. The verification
 ledger and independent review determine readiness; creating an archive alone
 does not pass those gates.
 
+The accepted handover on this host is `.local/releases/2026.10.15-reviewed/`,
+with image version `2026.10.15-r2`. Its manifest identifies the final committed
+source and all artifact hashes. See [the handover](handover.md) and
+[independent Round 2 result](quality-review.md) for acceptance and platform limits.
+
 `scripts/release.py package` takes an explicit JSON mapping of `linux/amd64` and
 `linux/arm64`, each containing `api`, `worker`, `frontend` and `database` image
 references. Build and verify those images from the stated application commit
@@ -18,7 +23,7 @@ python3 scripts/release.py package \
   --images .local/release-images.json --application-commit APPLICATION_COMMIT \
   --notices-amd64 .local/release-notices-amd64 \
   --notices-arm64 .local/release-notices-arm64 \
-  --version 2026.10.15-local --output .local/releases/2026.10.15-local
+  --version 2026.10.15-r2 --output .local/releases/2026.10.15-reviewed
 ```
 
 The new directory contains committed source, a compressed image archive and
