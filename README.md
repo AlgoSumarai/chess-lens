@@ -2,7 +2,7 @@
 
 ChessLens imports completed games, analyses them with Stockfish, and turns recurring mistakes into evidence-backed practice.
 
-**In development.** The complete target is documented in [the build brief](docs/build-brief.md); implementation order and evidence gates are in [the plan](docs/implementation-plan.md). Do not treat this checkout as production ready until the [verification ledger](docs/verification.md) records all acceptance gates.
+**Local release candidate; independent review pending.** The complete learning loop is implemented and locally verified. The [acceptance matrix](docs/acceptance-matrix.md) maps the [build brief](docs/build-brief.md) to code and evidence. See [the release record](docs/release-record.md), [offline startup](docs/release.md) and [the short demonstration](docs/demo.md). Final readiness requires the independent quality threshold in the [verification ledger](docs/verification.md).
 
 The stack is C# / ASP.NET Core, PostgreSQL, a separate Stockfish worker, and React / TypeScript. No paid API or LLM key is required for the core workflow. Deployment stays local until explicitly requested.
 
@@ -39,7 +39,7 @@ Stop containers with `docker compose -f compose.yaml -f compose.app.yaml stop`. 
 
 ## Native development
 
-Requires .NET SDK 10.0.402 (or a newer servicing patch in that feature band), Node 24 and PostgreSQL (the database-only Compose file supplies it).
+Requires .NET SDK 10.0.402 (or a newer servicing patch in that feature band), Node 24.22.0 and PostgreSQL (the database-only Compose file supplies it). Release/CI verification tools use Python 3.12 or newer.
 
 ```powershell
 ./scripts/init-env.ps1
@@ -100,7 +100,7 @@ Core weakness snapshots now include traceable supporting positions, sample sizes
 
 Public completed-game Chess.com/Lichess imports, immutable resync and durable bounded batch reviews are now implemented. See [provider import rules](docs/provider-imports.md), [the acceptance matrix](docs/acceptance-matrix.md) and the dated live/fixture/browser evidence in the verification ledger. Grounded beginner/intermediate/advanced factual coaching, an optional bounded structured-model provider, and versioned conversion/endgame detectors are implemented with real-engine and desktop/mobile checks. See [coaching rules](docs/coaching-rules.md) and [analytics rules](docs/analytics-rules.md). Paid model requests are disabled by default; no paid live model call has been made.
 
-The default local Compose configuration uses development cookie policy for loopback HTTP. A separate [HTTPS deployment example](docs/deployment.md) uses exact proxy/host/origin rules, secure cookies, file-mounted role secrets and persistent keys. It has local certificate, authentication, database-role and connected browser evidence; no public deployment is claimed. Backup/restore and application/Stockfish licence bundles are verified. Base-image notices, final clean-checkout/CI/release checks, measured performance and independent review remain required. See [dependency choices](docs/dependencies.md), [third-party notices](THIRD_PARTY_NOTICES.md), and [verification status](docs/verification.md).
+The default local Compose configuration uses development cookie policy for loopback HTTP. A separate [HTTPS deployment example](docs/deployment.md) uses exact proxy/host/origin rules, secure cookies, file-mounted role secrets and persistent keys. It has local certificate, authentication, database-role and connected browser evidence; no public deployment is claimed. Backup/restore, restored-copy cutover, exact licence/source bundles, both architecture exports, clean-checkout CI commands and a measured mixed-workload benchmark are verified. Independent review remains required; hosted GitHub actions, physical Windows/native ARM hardware and public deployment are not claimed. See [dependency choices](docs/dependencies.md), [third-party notices](THIRD_PARTY_NOTICES.md), and [verification status](docs/verification.md).
 
 Private uploaded PGN annotations and clocks are now stored per owner while legal game identity remains deduplicated. Upgrade first preserves legacy originals in restricted storage; older annotations whose author cannot be established stay withheld until their owner reimports their own file. Games and saved reviews remain available. Back up before this forward-only migration; see [the exact migration and deletion behavior](docs/pgn-annotation-isolation.md).
 
