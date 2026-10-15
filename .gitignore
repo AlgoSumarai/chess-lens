@@ -9,5 +9,6 @@
 .local/
 .vs/
 *.user
+**/*.tsbuildinfo
 *.log
 **/__pycache__/
