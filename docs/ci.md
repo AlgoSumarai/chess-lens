@@ -4,7 +4,7 @@
 local release verification. It uses a native Ubuntu 24.04 Engine runner,
 read-only repository permissions and commit-pinned official checkout/.NET/Node/
 artifact actions. Their upstream release refs were checked on 15 October 2026.
-The SDK comes from `global.json`, Node is 24.15.0, and both dependency graphs
+The SDK comes from `global.json`, Node is 24.22.0, and both dependency graphs
 are resolved from committed locks. No model credential is provided; paid
 coaching is explicitly disabled. The workflow does not publish images or deploy.
 
@@ -13,7 +13,10 @@ new credentials when `.env` does not exist, applies migrations, installs the
 checksum-pinned complete Stockfish distribution, checks source materials, runs
 locked restore/tool restore, backend/component/browser checks and the frontend
 build, checks exact licence inventories and both security feeds, and exercises
-the worker image's source hashes/real UCI. Browser tests include desktop/mobile
+the worker image's source hashes/real UCI. It also exports and verifies every
+installed OS package's copyright text, common licences and available .NET runtime
+notices from the actual four runtime images into `.local/ci/image-notices`.
+These exports run offline without application volumes or capabilities. Browser tests include desktop/mobile
 and the opt-in actual API outage: the project name and Compose labels are
 validated before faults. The development database permits the uniquely named
 integration-test databases; production runtime-role restrictions have separate

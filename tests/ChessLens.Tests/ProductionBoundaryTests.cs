@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ChessLens.Core.Persistence;
@@ -12,6 +13,30 @@ namespace ChessLens.Tests;
 [Collection("database")]
 public sealed class ProductionBoundaryTests(DatabaseFixture fixture)
 {
+    [Fact]
+    public async Task Production_migration_command_needs_no_web_host_or_origin_configuration()
+    {
+        var start = new ProcessStartInfo("dotnet") { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        start.ArgumentList.Add(typeof(Program).Assembly.Location);
+        start.ArgumentList.Add("--migrate");
+        start.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
+        start.Environment["DOTNET_ENVIRONMENT"] = "Production";
+        start.Environment["ConnectionStrings__Database"] = fixture.Connection;
+        start.Environment.Remove("Database__PasswordFile");
+        start.Environment.Remove("AllowedOrigins");
+        start.Environment.Remove("AllowedHosts");
+        using var process = Process.Start(start)!;
+        try
+        {
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(45));
+            Assert.True(process.ExitCode == 0, await stderr);
+            Assert.DoesNotContain("Now listening", await stdout);
+        }
+        finally { if (!process.HasExited) process.Kill(entireProcessTree: true); }
+    }
+
     private WebApplicationFactory<Program> Production() => fixture.WithWebHostBuilder(builder =>
     {
         builder.UseEnvironment("Production");

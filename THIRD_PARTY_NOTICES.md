@@ -20,4 +20,11 @@ Stockfish 19 is used as a separate UCI process under GPLv3. Installers and Linux
 
 Stockfish acknowledges neural networks trained with [Leela Chess Zero training data](https://storage.lczero.org/files/training_data), made available under ODbL. The [complete ODbL text](licenses/stockfish/ODbL-1.0.txt) is retained; the original training database is not bundled.
 
-Application-library texts are bundled now. Final release verification still inventories the exact base images' operating-system/runtime notices, checks the built artifacts and records release digests. This inventory does not stand in for those remaining release checks.
+Application-library texts are bundled now. `scripts/collect-image-notices.py`
+exports the actual runtime images' complete installed Debian/Ubuntu package
+copyright files, common licence texts and available .NET runtime notices, with
+exact package/source versions, image IDs and SHA-256 hashes. CI preserves that
+bundle in `.local/ci/image-notices`; retain it with any distributed image set.
+[Dependency documentation](docs/dependencies.md) links the distribution and image
+source archives. Final release verification separately collects both
+architectures' notices, checks the built artifacts and records release digests.

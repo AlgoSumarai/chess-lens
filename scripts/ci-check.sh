@@ -78,4 +78,9 @@ run_step browsers-connected npm --prefix web run test:e2e
 run_step image-source-uci python3 scripts/check-engine-image.py --image "$CHESSLENS_PROJECT-worker" \
   --platform "linux/$(docker --context default image inspect --format '{{.Architecture}}' "$CHESSLENS_PROJECT-worker")" \
   --verify-source --output "$chesslens_ci_directory/image-source-uci.json"
+run_step image-notices python3 scripts/collect-image-notices.py \
+  --platform "linux/$(docker --context default image inspect --format '{{.Architecture}}' "$CHESSLENS_PROJECT-worker")" \
+  --image "$CHESSLENS_PROJECT-api" --image "$CHESSLENS_PROJECT-worker" \
+  --image "$CHESSLENS_PROJECT-frontend" --image postgres:18.6 \
+  --output "$chesslens_ci_directory/image-notices"
 echo "Checks passed; evidence is in $chesslens_ci_directory and web/playwright-report."

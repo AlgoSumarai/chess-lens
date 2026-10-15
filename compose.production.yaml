@@ -90,7 +90,7 @@ services:
     depends_on:
       api: { condition: service_healthy }
     healthcheck:
-      test: [CMD, wget, -q, -T, '4', -O, /dev/null, http://127.0.0.1:8081/health/ready]
+      test: [CMD, curl, --fail, --silent, --max-time, '4', --output, /dev/null, http://127.0.0.1:8081/health/ready]
       interval: 10s
       timeout: 5s
       start_period: 180s

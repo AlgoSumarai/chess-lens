@@ -21,7 +21,9 @@ if (args.Contains("--healthcheck"))
     return;
 }
 var builder = WebApplication.CreateBuilder(args);
-var hostingSecurity = HostingSecurity.Configure(builder);
+var migrate = args.Contains("--migrate");
+// The migration command never serves HTTP and needs only database configuration.
+var hostingSecurity = migrate ? new HostingSecurity(false, [], false) : HostingSecurity.Configure(builder);
 builder.Logging.AddJsonConsole(o => { o.IncludeScopes = true; o.TimestampFormat = "O"; });
 builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 12 * 1024 * 1024);
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -69,7 +71,7 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 180, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 var app = builder.Build();
-if (args.Contains("--migrate"))
+if (migrate)
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<LensDbContext>().Database.MigrateAsync();
