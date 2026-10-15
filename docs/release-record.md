@@ -4,7 +4,7 @@
 
 Runtime application source is **3b3ae4a808cc2dda5e1ce789ccab2da8558cbf86**. The native corrected images pass clean-checkout startup, 227 backend/10 component/34 desktop-mobile checks, 64 clean automated accessibility scans, live provider resync, preserved-data/key upgrades, restricted-role HTTPS/copy engine checks and the repeat mixed-workload benchmark. The corresponding ARM64 images pass exact source/UCI and OS/runtime notice checks, fresh whole-stack startup and six desktop/mobile cases with 40 clean accessibility scans. **Round 1 remains failed; independent Round 2 is still required.**
 
-The new identities below come from the exact verified per-image notice inventories. The corrected packet is prepared at `.local/releases/2026.10.15-r2/`; its `release.json` and `SHA256SUMS` authoritatively record the committed source, image archives and complete file hashes. Artifact loading/fresh-start receipts are recorded after packaging; the historical candidate below must not be described as passing independent review.
+The new identities below come from the exact verified per-image notice inventories. The corrected packet is prepared at `.local/releases/2026.10.15-r2/`; its `release.json` and `SHA256SUMS` authoritatively record the committed source, image archives and complete file hashes. Both exported archives are actually loaded, all eight selected-platform IDs reverified, and extracted-source startup on localhost:8098 uses new credentials/volumes and `--no-build --pull never`. Served browser notices exactly match source. Evidence is `.local/evidence/review/fixes/offline-start/`; the historical candidate below must not be described as passing independent review.
 
 | Platform | Service | Observed image/config ID | Available manifest/index digest |
 | --- | --- | --- | --- |
@@ -16,6 +16,14 @@ The new identities below come from the exact verified per-image notice inventori
 | linux/arm64 | worker | `sha256:82c1f713b9e908a45433abfd4702ba9693c8a03d81e385a0d43ebf7d9e817721` | `sha256:643b8cff14d894b980690d7bc7fc67252e1d3c95f4429b371ae23bd349ef03c5` |
 | linux/arm64 | frontend | `sha256:0cd8cddfe21742666046ca806b74d40c79e8f072484cabfe3962956f44a6c135` | `sha256:291e48f988875b43cc54c9b448b8ddaa1df3f7796a84bded1755f50c355394f8` |
 | linux/arm64 | database | `sha256:a63b24165ea0eacced7585766d790ac08bbaefe10a1841f87783a4505d29a69c` | `sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336` |
+
+Corrected packet source is **792a4753e14a78bad4a711f4c1ed6f74b4888378**; application inputs remain **3b3ae4a808cc2dda5e1ce789ccab2da8558cbf86**. All **1191** file hashes verify. This source contains the complete corrections, operational evidence, Round 1 record and prepared handover. Later archive-receipt/review documentation is recorded separately, without pretending it existed in that source snapshot.
+
+| Corrected artifact | SHA-256 |
+| --- | --- |
+| images-amd64.tar.gz | `760d35628da62d6dba43a1f25684d23cb4d76abd55b5d1ecf39b4afcff742ffe` |
+| images-arm64.tar.gz | `5a276663ca9b3cdb24bc0d45067f831c370fdc4321cdcd7817c0585332daad51` |
+| source.tar.gz | `8b01aac5602753528fb0370ccfe878efd301d2d6bf3b7d8c173a478d21086ffc` |
 
 ## Historical candidate — failed Round 1
 
