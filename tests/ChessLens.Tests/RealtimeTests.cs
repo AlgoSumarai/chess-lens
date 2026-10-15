@@ -1,6 +1,14 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using ChessLens.Core.Imports;
+using ChessLens.Core.Analysis;
+using ChessLens.Core.Coaching;
+using ChessLens.Core.Games;
+using ChessLens.Core.Insights;
+using ChessLens.Core.Persistence;
+using ChessLens.Core.Reports;
+using ChessLens.Core.Training;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -61,6 +69,56 @@ public sealed class RealtimeTests(DatabaseFixture fixture)
         var state = await client.GetFromJsonAsync<JsonElement>($"/api/jobs/{id}");
         Assert.Equal(id, state.GetProperty("id").GetGuid());
         Assert.True(state.GetProperty("version").GetInt64() >= received.GetProperty("version").GetInt64());
+    }
+
+    [Fact]
+    public async Task Every_job_kind_requires_its_owner_on_the_actual_hub_connection()
+    {
+        var (client, cookie) = await Account(); using var alice = client;
+        var (other, otherCookie) = await Account(); using var bob = other;
+        var owner = (await alice.GetFromJsonAsync<JsonElement>("/api/account/me")).GetProperty("id").GetString()!;
+        var imported = await alice.PostAsJsonAsync("/api/imports/pgn", new PgnImportRequest(PgnTests.Game));
+        imported.EnsureSuccessStatusCode();
+        var importId = (await imported.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        Guid[] ids;
+        await using (var scope = fixture.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LensDbContext>();
+            // Administrative fixtures exercise authorization only, never chess execution.
+            // Historical UpdatedAt values keep them outside the broadcaster's live window.
+            var old = DateTimeOffset.UtcNow.AddDays(-1);
+            var game = new PgnReader().Parse($"[Event \"Original authorization fixture {Guid.NewGuid()}\"]\n[White \"Learner\"]\n[Black \"Opponent\"]\n[Result \"0-1\"]\n1.e4 e5 0-1");
+            db.Games.Add(game); db.UserGames.Add(new UserGame { OwnerId = owner, GameId = game.Id });
+            var run = new AnalysisRun { OwnerId = owner, GameId = game.Id, State = "cancelled", UpdatedAt = old };
+            var move = new MoveAnalysis { RunId = run.Id, Ply = 1, FenBefore = game.InitialFen, PlayedMove = "e2e4", Side = "white", BestMove = "e2e4",
+                BestScoreKind = "cp", PlayedScoreKind = "cp", Classification = "sound", BestSearchJson = "{}", PlayedSearchJson = "{}", BudgetJson = "{}", CacheIdentity = "authorization-fixture" };
+            var channel = new PositionReviewChannel { Id = Guid.NewGuid(), OwnerId = owner, GameId = game.Id, UpdatedAt = old };
+            var position = new PositionAnalysisJob { OwnerId = owner, GameId = game.Id, ChannelId = channel.Id,
+                InitialFen = game.InitialFen, HistoryJson = "[]", Fen = game.InitialFen, State = "cancelled", UpdatedAt = old };
+            var insight = new InsightSnapshot { OwnerId = owner, FilterJson = "{}", OptionsJson = "{}", State = "cancelled", UpdatedAt = old };
+            var puzzle = new Puzzle { OwnerId = owner, GameId = game.Id, RunId = run.Id, Ply = 1, State = "cancelled", UpdatedAt = old };
+            var batch = new ImportAnalysisBatch { OwnerId = owner, ImportJobId = importId, Profile = "deep", RunIdsJson = "[]", State = "cancelled", UpdatedAt = old };
+            var coaching = new CoachingJob { OwnerId = owner, GameId = game.Id, RunId = run.Id, Ply = 1,
+                CacheIdentity = Guid.NewGuid().ToString(), EvidenceJson = "{}", State = "cancelled", UpdatedAt = old };
+            var practice = new PracticeSession { OwnerId = owner, GameId = game.Id, RunId = run.Id, Ply = 1, Side = "white",
+                StartingPositionJson = "{}", SourceEvidenceJson = "{}", ObjectiveJson = "{}", State = "cancelled", UpdatedAt = old };
+            var report = new ReportSnapshot { OwnerId = owner, Kind = "progress", ScopeIdentity = Guid.NewGuid().ToString(),
+                CacheIdentity = Guid.NewGuid().ToString(), InputsJson = "{}", State = "cancelled", UpdatedAt = old };
+            db.AddRange(run, move, channel, position, insight, puzzle, batch, coaching, practice, report);
+            await db.SaveChangesAsync();
+            ids = [importId, run.Id, position.Id, insight.Id, puzzle.Id, batch.Id, coaching.Id, practice.Id, report.Id];
+        }
+        await using var owned = Connect(cookie); await using var foreign = Connect(otherCookie);
+        await owned.StartAsync(); await foreign.StartAsync();
+        foreach (var id in ids)
+        {
+            await owned.InvokeAsync("SubscribeJob", id);
+            var rejection = await Assert.ThrowsAsync<HubException>(() => foreign.InvokeAsync("SubscribeJob", id));
+            Assert.Contains("Job not found", rejection.Message);
+        }
+        (await alice.DeleteAsync("/api/account/data")).EnsureSuccessStatusCode();
+        foreach (var id in ids)
+            await Assert.ThrowsAsync<HubException>(() => owned.InvokeAsync("SubscribeJob", id));
     }
 
     [Fact]
