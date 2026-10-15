@@ -82,7 +82,7 @@ public sealed class ProgressBroadcaster(IServiceScopeFactory scopes, IHubContext
                 cursor = next;
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
-            catch (Exception e) { log.LogWarning(e, "Progress notifications temporarily unavailable; clients reconcile through HTTP"); }
+            catch (Exception e) { log.LogWarning("Progress notifications temporarily unavailable; clients reconcile through HTTP. Error type: {ErrorType}", e.GetType().Name); }
         }
     }
 }
