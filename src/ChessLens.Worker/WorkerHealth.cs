@@ -28,13 +28,20 @@ public sealed class WorkerHealth(IServiceScopeFactory scopes, EnginePool engine,
         {
             try
             {
-                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct); deadline.CancelAfter(TimeSpan.FromSeconds(4));
-                await using var scope = scopes.CreateAsyncScope(); var db = scope.ServiceProvider.GetRequiredService<LensDbContext>();
+                using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct); 
+                deadline.CancelAfter(TimeSpan.FromSeconds(4));
+                await using var scope = scopes.CreateAsyncScope(); 
+                var db = scope.ServiceProvider.GetRequiredService<LensDbContext>();
                 var now = DateTimeOffset.UtcNow;
                 var status = await db.WorkerStatuses.SingleOrDefaultAsync(s => s.Id == instance, deadline.Token);
-                if (status is null) { status = new() { Id = instance }; db.WorkerStatuses.Add(status); }
-                status.LastSeen = now; status.EngineCheckedAt = engine.LastSuccessfulSearch;
-                status.MainLaneAt = activity.Main; status.InteractiveLaneAt = activity.Interactive;
+                if (status is null) { 
+                    status = new() { Id = instance }; 
+                    db.WorkerStatuses.Add(status);
+                }
+                status.LastSeen = now;
+                status.EngineCheckedAt = engine.LastSuccessfulSearch;
+                status.MainLaneAt = activity.Main; 
+                status.InteractiveLaneAt = activity.Interactive;
                 status.Ready = status.HasRecentProgress(now) && status.EngineCheckedAt?.Ticks > Interlocked.Read(ref lastFailedProbe);
                 await db.SaveChangesAsync(deadline.Token);
                 var local = JsonSerializer.Serialize(new LocalStatus(Environment.ProcessId, status.Ready, now));
