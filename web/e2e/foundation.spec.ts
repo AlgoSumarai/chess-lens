@@ -45,12 +45,14 @@ test('register, import, identify, replay and explore an unchanged mainline', asy
   await expect(page.getByText('completed · quick review · 10/10 half-moves')).toBeVisible({ timeout: 150000 });
   expect(analysisEvents).toBeGreaterThan(0);
   await expect(page.getByRole('region', { name: 'Game evaluation' })).toBeVisible();
-  await page.getByRole('button', { name: /Evaluation at half-move 3:/ }).click();
+  await expect(page.locator('.graph-points small')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Evaluation at half-move 3', exact: true }).click();
   await expect(page.getByRole('status', { name: 'Position status' })).toContainText('After Nf3');
   await expect(page.getByRole('button', { name: 'Move 3: Nf3', exact: true })).toHaveAttribute('aria-current', 'step');
   await page.getByRole('button', { name: 'Analyse this position', exact: true }).click();
   await expect(page.getByRole('status', { name: 'Position analysis status' })).toContainText('Position reviewed', { timeout: 150000 });
   await expect(page.getByLabel('Candidate continuations')).toContainText('Candidate 1');
+  await expect(page.locator('.graph-points small')).toHaveCount(10);
   expect(positionEvents).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Move 1: e4', exact: true }).click();
   await page.getByRole('button', { name: 'Move 4: Nc6', exact: true }).click();
@@ -63,6 +65,8 @@ test('register, import, identify, replay and explore an unchanged mainline', asy
   await page.screenshot({ path: `test-results/candidates-${info.project.name}.png`, fullPage: true });
   await page.getByRole('button', { name: 'Stop position analysis', exact: true }).click();
   await expect(page.getByLabel('Candidate continuations')).toHaveCount(0);
+  await expect(page.locator('.live-evaluation-score')).toHaveCount(0);
+  await expect(page.locator('.graph-points small')).toHaveCount(0);
   await page.screenshot({ path: `test-results/review-${info.project.name}.png`, fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   expect(overflow).toBe(false);

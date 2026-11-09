@@ -40,15 +40,9 @@ export function AnalysisPanel({ game, run, current, exploring, error, reload, co
   </Panel>;
 }
 
-export function EvaluationGraph({ run, ply, onSelect }: { run: Analysis; ply: number; onSelect: (ply: number) => void }) {
+export function EvaluationGraph({ run, ply, onSelect, showScores = true }: { run: Analysis; ply: number; onSelect: (ply: number) => void; showScores?: boolean }) {
   const value = (move: MoveAnalysis) => { const score = whiteScore(move); return score.kind === 'mate' ? Math.sign(score.value) : Math.tanh(score.value / 400); };
   const x = (n: number) => 12 + (n / Math.max(1, run.totalPlies)) * 576;
   const y = (move: MoveAnalysis) => 70 - value(move) * 53;
-  return <section className="evaluation-graph" aria-label="Game evaluation"><div className="section-title"><h2>How the position changed</h2><small>White's perspective</small></div><svg viewBox="0 0 600 140" role="img" aria-label="Evaluation by move. Select a move using the buttons below."><line x1="12" x2="588" y1="70" y2="70" stroke="#53616f" strokeDasharray="4 4" /><polyline fill="none" stroke="#e5b76a" strokeWidth="2" points={run.moves.map(m => `${x(m.ply)},${y(m)}`).join(' ')} />{run.moves.map(m => <circle key={m.ply} cx={x(m.ply)} cy={y(m)} r={m.ply === ply ? 5 : 3} fill={m.ply === ply ? '#fff4dc' : '#e5b76a'} onClick={() => onSelect(m.ply)}><title>Half-move {m.ply}: {scoreLabel(whiteScore(m))}</title></circle>)}</svg><div className="graph-points">{run.moves.map(m => <button key={m.ply} aria-label={`Evaluation at half-move ${m.ply}: ${scoreLabel(whiteScore(m))}`} aria-pressed={m.ply === ply} onClick={() => onSelect(m.ply)}>{m.ply}<small>{scoreLabel(whiteScore(m))}</small></button>)}</div><small>Centipawn scale is compressed for readability. Mate scores remain distinct; this is not a win probability.</small></section>;
-}
-
-export function EvaluationBar({ move }: { move: MoveAnalysis }) {
-  const score = whiteScore(move);
-  const width = score.kind === 'mate' ? score.value > 0 ? 100 : 0 : 50 + Math.tanh(score.value / 400) * 45;
-  return <div className="evaluation-bar" role="img" aria-label={`White's evaluation: ${scoreLabel(score)}`}><div style={{ width: `${width}%` }} /><span>{scoreLabel(score)}{move.provisional ? ' · provisional' : ''}</span></div>;
+  return <section className="evaluation-graph" aria-label="Game evaluation"><div className="section-title"><h2>How the position changed</h2><small>White's perspective</small></div><svg viewBox="0 0 600 140" role="img" aria-label="Evaluation by move. Select a move using the buttons below."><line x1="12" x2="588" y1="70" y2="70" stroke="#53616f" strokeDasharray="4 4" /><polyline fill="none" stroke="#e5b76a" strokeWidth="2" points={run.moves.map(m => `${x(m.ply)},${y(m)}`).join(' ')} />{run.moves.map(m => <circle key={m.ply} cx={x(m.ply)} cy={y(m)} r={m.ply === ply ? 5 : 3} fill={m.ply === ply ? '#fff4dc' : '#e5b76a'} onClick={() => onSelect(m.ply)}><title>Half-move {m.ply}{showScores ? `: ${scoreLabel(whiteScore(m))}` : ''}</title></circle>)}</svg><div className="graph-points">{run.moves.map(m => <button key={m.ply} aria-label={`Evaluation at half-move ${m.ply}${showScores ? `: ${scoreLabel(whiteScore(m))}` : ''}`} aria-pressed={m.ply === ply} onClick={() => onSelect(m.ply)}>{m.ply}{showScores && <small>{scoreLabel(whiteScore(m))}</small>}</button>)}</div><small>Centipawn scale is compressed for readability. Mate scores remain distinct; this is not a win probability.</small></section>;
 }

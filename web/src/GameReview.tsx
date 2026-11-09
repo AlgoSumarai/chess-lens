@@ -1,5 +1,5 @@
 import { StatusMessage } from './StatusMessage';
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useMemo, useReducer, useState, type CSSProperties, type FormEvent } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { namedPieces } from './chessPieces';
@@ -7,28 +7,41 @@ import { api, send, type Game, type Position } from './api';
 import { useRemote } from './hooks';
 import { ErrorNotice, Panel } from './App';
 import { useAnalysis } from './analysis';
-import { AnalysisPanel, EvaluationBar, EvaluationGraph } from './AnalysisPanel';
+import { AnalysisPanel, EvaluationGraph } from './AnalysisPanel';
 import { PositionAnalysisPanel } from './PositionAnalysisPanel';
+import { usePositionAnalysis } from './positionAnalysis';
+import { LiveEvaluationBar } from './LiveEvaluationBar';
+import { createReviewTree, moveNumber, reviewPath, reviewReducer, reviewVariations } from './reviewTree';
 import { BoardPositionText } from './BoardPositionText';
 import { PromotionChoices } from './PromotionChoices';
 
 export function GameReview({ id, initialPly = 0, runId, coachingLevel = 'beginner', modelOptIn = false }: { id: string; initialPly?: number; runId?: string; coachingLevel?: string; modelOptIn?: boolean }) {
-  const { data: game, error, reload } = useRemote<Game>(`/games/${id}`);
-  if (error) return <ErrorNotice message={error} retry={reload} />;
+  const { data, error, reload } = useRemote<Game>(`/games/${id}`);
+  const [lastGame, setLastGame] = useState<Game>();
+  useEffect(() => { if (data) setLastGame(data); }, [data]);
+  // Refreshing player identity must not close this review and discard its lines.
+  const game = data?.id === id ? data : lastGame?.id === id ? lastGame : undefined;
+  if (error && !game) return <ErrorNotice message={error} retry={reload} />;
   if (!game) return <p aria-busy="true">Opening your game…</p>;
   return <>
+    <ErrorNotice message={error} retry={reload} />
     {runId && <Panel>
         <p>Viewing the saved analysis referenced by this evidence.</p>
         <a href={`#/games/${id}?ply=${initialPly}`}>Open the latest review</a>
       </Panel>}
-    <Review game={game} reload={reload} initialPly={initialPly} runId={runId} coachingLevel={coachingLevel} modelOptIn={modelOptIn} />
+    <Review key={game.id} game={game} reload={reload} initialPly={initialPly} runId={runId} coachingLevel={coachingLevel} modelOptIn={modelOptIn} />
     </>;
 }
 
 function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: { game: Game; reload: () => void; initialPly: number; runId?: string; coachingLevel: string; modelOptIn: boolean }) {
   const analysis = useAnalysis(game.id, runId);
-  const [ply, setPly] = useState(Number.isInteger(initialPly) ? Math.max(0, Math.min(initialPly, game.moves.length)) : 0);
-  const [variation, setVariation] = useState<string[]>([]);
+  const [tree, dispatch] = useReducer(reviewReducer, { game, initialPly }, createReviewTree);
+  const node = tree.nodes[tree.current];
+  const { ply, variation } = node;
+  const selectedPath = useMemo(() => reviewPath(tree, tree.line), [tree]);
+  const cursor = selectedPath.findIndex(n => n.id === tree.current);
+  const variationLines = reviewVariations(tree);
+  const mainlineEnd = tree.mainline[tree.mainline.length - 1];
   const [orientation, setOrientation] = useState<'white' | 'black'>(game.playerColour ?? 'white');
   const [selected, setSelected] = useState<string>();
   const [positionResponse, setPosition] = useState<Position & { requestKey: string }>();
@@ -38,14 +51,10 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
   const [error, setError] = useState('');
   const [promotion, setPromotion] = useState<string>();
   const [typed, setTyped] = useState('');
-  const mainlineFen = ply === 0 ? game.initialFen : game.moves[ply - 1].fenAfter;
-  const local = useMemo(() => {
-    
-    const board = new Chess(mainlineFen);
-    for (const uci of variation) 
-      board.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
-    return board;
-  }, [mainlineFen, variation]);
+  const local = useMemo(() => new Chess(node.fen), [node.fen]);
+  const fen = position?.fen ?? local.fen();
+  const liveAnalysis = usePositionAnalysis({ gameId: game.id, ply, variation, fen,
+    ready: !busy && !!position, legalMoves: position?.legalMoves ?? [], revision: analysis.positionRevision });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,19 +68,24 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
     return () => controller.abort();
   }, [game.id, ply, variation, requestKey]);
 
-  const navigate = (next: number) => { setPly(Math.max(0, Math.min(game.moves.length, next))); 
-    setVariation([]); 
-    setSelected(undefined); 
-    setPromotion(undefined); };
+  const clearInput = () => { setSelected(undefined); setPromotion(undefined); setTyped(''); setError(''); };
+  const navigate = (next: number) => {
+    dispatch({ type: 'select', node: tree.mainline[Math.max(0, Math.min(game.moves.length, next))], line: mainlineEnd });
+    clearInput();
+  };
+  const step = (direction: 'first' | 'previous' | 'next' | 'last') => { dispatch({ type: 'navigate', direction }); clearInput(); };
   
   const play = (uci: string) => {
     if (busy || !position?.legalMoves.includes(uci)) { 
       setError('Choose a legal move in the current position.'); 
       return false; 
     }
-    setVariation(v => [...v, uci]); 
-    setSelected(undefined); setPromotion(undefined); 
-    setTyped(''); 
+    if (variation.length >= 100 && !node.children.some(id => tree.nodes[id].uci === uci)) {
+      setError('This variation has reached 100 half-moves. Go back to explore another continuation.');
+      return false;
+    }
+    dispatch({ type: 'play', uci });
+    clearInput();
     
     return true;
   };
@@ -85,7 +99,7 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
     return matching.length === 1 && play(matching[0]);
   };
   const styles: Record<string, CSSProperties> = {};
-  const last = variation.at(-1) ?? (ply > 0 ? game.moves[ply - 1].uci : undefined);
+  const last = node.uci;
   if (last) { 
     styles[last.slice(0, 2)] = { backgroundColor: '#d2ba63' }; 
     styles[last.slice(2, 4)] = { backgroundColor: '#d2ba63' }; 
@@ -133,19 +147,19 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
       if ((e.target as HTMLElement).closest('[aria-roledescription="draggable"]')) return;
       if (e.key === 'ArrowLeft') { 
         e.preventDefault(); 
-        navigate(ply - 1); 
+        step('previous');
       }
       if (e.key === 'ArrowRight') { 
         e.preventDefault(); 
-        navigate(ply + 1); 
+        step('next');
       }
       if (e.key === 'Home') { 
         e.preventDefault(); 
-        navigate(0); 
+        step('first');
       }
       if (e.key === 'End') { 
         e.preventDefault(); 
-        navigate(game.moves.length); 
+        step('last');
       }
       }}>
       <section className="board-section" aria-label="Interactive game board">
@@ -154,17 +168,20 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
           <strong>{orientation === 'white' ? game.black : game.white}</strong>
           <small>{(orientation === 'white' ? game.blackRating : game.whiteRating) ?? 'Unrated'}</small>
         </div>
-        <div className="board-wrap">
-          <Chessboard options={{ pieces: namedPieces, lightSquareNotationStyle: { color: '#101010' }, darkSquareNotationStyle: { color: '#101010' }, id: `review-${game.id}`,
-            position: position?.fen ?? local.fen(), 
-            boardOrientation: orientation, 
-            allowDragging: !busy && !!position,
-            darkSquareStyle: { backgroundColor: '#8d7961' }, 
-            lightSquareStyle: { backgroundColor: '#ece2cd' }, 
-            squareStyles: styles,
-            animationDurationInMs: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160,
-            onSquareClick: ({ square }) => { if (selected && choose(selected, square)) return; setSelected(square); },
-            onPieceDrop: ({ sourceSquare, targetSquare }) => targetSquare ? choose(sourceSquare, targetSquare) : false, }} />
+        <div className="board-with-evaluation">
+          <LiveEvaluationBar analysis={liveAnalysis} orientation={orientation} />
+          <div className="board-wrap">
+            <Chessboard options={{ pieces: namedPieces, lightSquareNotationStyle: { color: '#101010' }, darkSquareNotationStyle: { color: '#101010' }, id: `review-${game.id}`,
+              position: fen,
+              boardOrientation: orientation,
+              allowDragging: !busy && !!position,
+              darkSquareStyle: { backgroundColor: '#8d7961' },
+              lightSquareStyle: { backgroundColor: '#ece2cd' },
+              squareStyles: styles,
+              animationDurationInMs: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 160,
+              onSquareClick: ({ square }) => { if (selected && choose(selected, square)) return; setSelected(square); },
+              onPieceDrop: ({ sourceSquare, targetSquare }) => targetSquare ? choose(sourceSquare, targetSquare) : false, }} />
+          </div>
         </div>
 
         <div className="player-strip">
@@ -173,37 +190,43 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
           <small>{(orientation === 'white' ? game.whiteRating : game.blackRating) ?? 'Unrated'}</small>
         </div>
         <div className="board-controls">
-          <button aria-label="First position" aria-disabled={ply === 0 && !variation.length} onClick={() =>
-            navigate(0)}>⏮</button>
-          <button aria-label="Previous move" aria-disabled={ply === 0 && !variation.length} onClick={() =>
-            variation.length ? setVariation(v => v.slice(0, -1)) : navigate(ply - 1)}>←</button>
-          <span>{variation.length ? `Variation · ${variation.length} half-moves` : `${ply} / ${game.moves.length}`}</span>
-          <button aria-label="Next move" aria-disabled={ply === game.moves.length} onClick={() =>
-            navigate(ply + 1)}>→</button>
-          <button aria-label="Last position" aria-disabled={ply === game.moves.length && !variation.length} onClick={() =>
-            navigate(game.moves.length)}>⏭</button>
+          <button aria-label="First position" aria-disabled={cursor === 0} onClick={() => step('first')}>⏮</button>
+          <button aria-label="Previous move" aria-disabled={cursor === 0} onClick={() => step('previous')}>←</button>
+          <span>{tree.line === mainlineEnd ? `${ply} / ${game.moves.length}` : `Variation · ${cursor} / ${selectedPath.length - 1}`}</span>
+          <button aria-label="Next move" aria-disabled={cursor === selectedPath.length - 1} onClick={() => step('next')}>→</button>
+          <button aria-label="Last position" aria-disabled={cursor === selectedPath.length - 1} onClick={() => step('last')}>⏭</button>
           <button aria-label="Flip board" onClick={() => 
             setOrientation(o => o === 'white' ? 'black' : 'white')}>↻</button>
         </div>
 
         <p className="board-hint">Use ← → to replay. Select a piece, then a square, to explore.</p>
 
-        {!variation.length && moveAnalysis && <EvaluationBar move={moveAnalysis} />}
-        {analysis.data && analysis.data.moves.length > 0 && <EvaluationGraph run={analysis.data} ply={ply} onSelect={navigate} />}
+        {analysis.data && analysis.data.moves.length > 0 && <EvaluationGraph run={analysis.data} ply={variation.length ? -1 : ply} onSelect={navigate} showScores={liveAnalysis.enabled} />}
       </section>
       <div className="review-side">
         <Panel>
           <div className="section-title">
             <h2>Moves</h2>
-            <span className="pill">{variation.length ? 'EXPLORING' : 'MAINLINE'}</span>
+            <span className="pill">{tree.line === mainlineEnd ? 'MAINLINE' : 'EXPLORING'}</span>
           </div>
-          <div className="notation" role="group" aria-label="Game notation">
-            {game.moves.map(m => 
-              <button key={m.ply} aria-label={`Move ${m.ply}: ${m.san}`} aria-current={m.ply === ply ? 'step' : undefined} onClick={() => 
-                navigate(m.ply)}>
-                  <small>{Math.floor(Number(m.fenBefore.split(' ')[5]))}{m.side === 'white' ? '.' : '…'}</small>{m.san}</button>
-                )
-            }
+          <div className="review-lines">
+            <button className="line-selector" aria-label="Select original game" aria-pressed={tree.line === mainlineEnd} onClick={() => { dispatch({ type: 'line', line: mainlineEnd }); clearInput(); }}>Original game</button>
+            <div className="notation" role="group" aria-label="Game notation">
+              {game.moves.map(m => <button key={m.ply} aria-label={`Move ${m.ply}: ${m.san}`} aria-current={tree.current === tree.mainline[m.ply] ? 'step' : undefined} onClick={() => navigate(m.ply)}>
+                <small>{moveNumber(m.fenBefore)}</small>{m.san}</button>)}
+            </div>
+            {variationLines.map((end, index) => {
+              const path = reviewPath(tree, end.id);
+              const branch = path.filter(n => n.variation.length);
+              const anchor = tree.nodes[branch[0].parent!];
+              return <div className="review-variation" key={end.id}>
+                <button className="line-selector" aria-label={`Select variation ${index + 1}`} aria-pressed={tree.line === end.id} onClick={() => { dispatch({ type: 'line', line: end.id }); clearInput(); }}>Variation {index + 1} · {anchor.san ? `after ${moveNumber(tree.nodes[anchor.parent!].fen)} ${anchor.san}` : 'from start'}</button>
+                <div className="variation-notation" role="group" aria-label={`Variation ${index + 1} moves`}>
+                  {branch.map(n => <button key={n.id} aria-label={`Variation ${index + 1}: ${moveNumber(tree.nodes[n.parent!].fen)} ${n.san}`} aria-current={tree.current === n.id ? 'step' : undefined} onClick={() => { dispatch({ type: 'select', node: n.id, line: end.id }); clearInput(); }}>
+                    <small>{moveNumber(tree.nodes[n.parent!].fen)}</small> {n.san}</button>)}
+                </div>
+              </div>;
+            })}
           </div>
           <p className="metadata">{game.termination ?? 'Termination not recorded'}</p>
         </Panel>
@@ -216,8 +239,8 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
           {
             variation.length > 0 && 
               <>
-                <p className="variation-line">{local.history().join(' ')}</p>
-                <button onClick={() => { setVariation([]); setPromotion(undefined); }}>Return to mainline</button>
+                <p className="variation-line">{reviewPath(tree, tree.current).filter(n => n.variation.length).map(n => n.san).join(' ')}</p>
+                <button onClick={() => navigate(ply)}>Return to mainline</button>
               </>
           }
 
@@ -233,13 +256,9 @@ function Review({ game, reload, initialPly, runId, coachingLevel, modelOptIn }: 
                 maxLength={5} autoComplete="off" /></label>
             <button disabled={busy || !typed}>Play move</button>
           </form>
-          <BoardPositionText fen={position?.fen ?? local.fen()} legalMoves={position?.legalMoves} />
+          <BoardPositionText fen={fen} legalMoves={position?.legalMoves} />
         </Panel>
-        <PositionAnalysisPanel gameId={game.id} 
-          ply={ply} 
-          variation={variation} fen={position?.fen ?? local.fen()} 
-          ready={!busy && !!position?.legalMoves.length} 
-          revision={analysis.positionRevision} />
+        <PositionAnalysisPanel analysis={liveAnalysis} fen={fen} onPlay={play} />
         <AnalysisPanel game={game} run={analysis.data} current={moveAnalysis} coachingLevel={coachingLevel} modelOptIn={modelOptIn}
           exploring={variation.length > 0} error={analysis.error} 
           reload={analysis.reload} connected={analysis.connected} 
